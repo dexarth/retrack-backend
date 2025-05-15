@@ -6,9 +6,22 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ProfileTokenController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Artisan;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::get('/clear-cache', function () {
+    Artisan::call('cache:clear');      // Clear application cache
+    Artisan::call('config:clear');     // Clear config cache
+    Artisan::call('config:cache');     // Rebuild config cache
+    Artisan::call('route:clear');      // Clear route cache
+    Artisan::call('view:clear');       // Clear compiled views
+    Artisan::call('event:clear');      // Clear event cache
+    Artisan::call('optimize:clear');   // Clear all optimizations
+    
+    return "All caches cleared successfully!";
 });
 
 // Define the Swagger docs routes with proper naming convention
