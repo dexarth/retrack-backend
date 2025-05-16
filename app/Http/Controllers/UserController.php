@@ -13,7 +13,7 @@ class UserController extends Controller
      * @OA\Get(
      *     path="/api/me",
      *     summary="Get authenticated user details",
-     *     tags={"User"},
+     *     tags={"Auth"},
      *     security={{"sanctum": {}}},
      *     @OA\Response(
      *         response=200,
@@ -45,18 +45,50 @@ class UserController extends Controller
         ]);
     }
 
-    public function logout(Request $request)
+    /**
+     * @OA\Post(
+     *     path="/api/login",
+     *     tags={"Auth"},
+     *     summary="Login user and get token",
+     *     description="Login user and return bearer token",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email","password"},
+     *             @OA\Property(property="email", type="string", format="email", example="user@example.com"),
+     *             @OA\Property(property="password", type="string", format="password", example="password")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful login",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="token", type="string"),
+     *             @OA\Property(property="user", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Invalid credentials")
+     * )
+     */
+    public function login(Request $request)
     {
-        // Logout the user
-        Auth::guard('web')->logout();
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
 
-        // Invalidate the session and regenerate the CSRF token
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
 
-        // Clear the cookies
-        return redirect('/login') // Redirect to login page after logout
-            ->withCookie(cookie()->forget('laravel_session'))
-            ->withCookie(cookie()->forget('XSRF-TOKEN'));
+        $user = Auth::user();
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => $user,
+        ]);
     }
 }

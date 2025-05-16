@@ -14,3 +14,6 @@ Route::middleware('auth:sanctum')->get('/weather/{city}', [WeatherController::cl
 
 //get user role
 Route::middleware('auth:sanctum')->get('/me', [UserController::class, 'me']);
+
+//login
+Route::post('/login', [UserController::class, 'login']);

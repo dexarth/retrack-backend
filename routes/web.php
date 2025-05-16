@@ -24,9 +24,10 @@ Route::get('/clear-cache', function () {
     return "All caches cleared successfully!";
 });
 
-// Define the Swagger docs routes with proper naming convention
+// Swagger Documentation JSON Route
 Route::get('/api/docs/{jsonFile?}', function ($jsonFile = 'api-docs.json') {
     $path = storage_path("api-docs/{$jsonFile}");
+
     if (!File::exists($path)) {
         abort(404, 'API documentation not found.');
     }
@@ -36,43 +37,40 @@ Route::get('/api/docs/{jsonFile?}', function ($jsonFile = 'api-docs.json') {
     ]);
 })->name('l5-swagger.default.docs');
 
-// Define OAuth2 callback route for Swagger
-Route::get('/api/oauth2-callback', function () {
-    return '';
-})->name('l5-swagger.default.oauth2_callback');
+// Swagger OAuth2 Callback Route
+Route::get('/api/oauth2-callback', fn() => '')->name('l5-swagger.default.oauth2_callback');
 
+// Swagger UI Route (Made public for login testing)
+Route::get('/api/documentation', function () {
+    $documentation = Config::get('l5-swagger.default');
+    $documentationTitle = Config::get("l5-swagger.documentations.{$documentation}.api.title");
+    $useAbsolutePath = Config::get('l5-swagger.paths.use_absolute_path', true);
+
+    $urlsToDocs = [];
+    foreach (Config::get('l5-swagger.documentations') as $name => $config) {
+        $urlsToDocs[] = [
+            'url' => route("l5-swagger.{$name}.docs", ['api-docs.json']),
+            'name' => $config['api']['title'] ?? $name,
+        ];
+    }
+
+    return view('vendor.l5-swagger.index', compact(
+        'documentation',
+        'documentationTitle',
+        'urlsToDocs',
+        'useAbsolutePath'
+    ));
+})->name('l5-swagger.documentation');
+
+// Authenticated Routes (Sanctum + Jetstream + Email Verified)
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-
+    Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
     Route::post('/generate-token', [ProfileTokenController::class, 'generate'])->name('token.generate');
-    
-    Route::middleware(['auth'])->get('/api/documentation', function () {
-        $documentation = Config::get('l5-swagger.default');
-        $documentationTitle = Config::get("l5-swagger.documentations.{$documentation}.api.title");
-        $useAbsolutePath = Config::get('l5-swagger.paths.use_absolute_path', true);
-        
-        // Correct way to build URLs to docs for different documentations
-        $urlsToDocs = [];
-        foreach (Config::get('l5-swagger.documentations') as $name => $config) {
-            $urlsToDocs[] = [
-                'url' => route("l5-swagger.{$name}.docs", ['api-docs.json']),
-                'name' => $config['api']['title'] ?? $name,
-            ];
-        }
-
-        return view('vendor.l5-swagger.index', compact(
-            'documentation', 
-            'documentationTitle', 
-            'urlsToDocs',
-            'useAbsolutePath'
-        ));
-    })->name('l5-swagger.documentation');
 });
 
-Route::get('/logout', [UserController::class, 'logout']);
+// Logout
+// Route::get('/logout', [UserController::class, 'logout']);

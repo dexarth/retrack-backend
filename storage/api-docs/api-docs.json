@@ -9,7 +9,7 @@
         "/api/me": {
             "get": {
                 "tags": [
-                    "User"
+                    "Auth"
                 ],
                 "summary": "Get authenticated user details",
                 "operationId": "aef6fdddec1e8495d4830821b4afdf54",
@@ -44,23 +44,52 @@
                 ]
             }
         },
-        "/api/logout": {
+        "/api/login": {
             "post": {
                 "tags": [
-                    "User"
+                    "Auth"
                 ],
-                "summary": "Logout user",
-                "operationId": "67d5147477c548bfbc3f982833bbc7bd",
+                "summary": "Login user and get token",
+                "description": "Login user and return bearer token",
+                "operationId": "0fc9610184083ac6dddab2c63139225a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "user@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Successfully logout",
+                        "description": "Successful login",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Logged out successfully"
+                                        "token": {
+                                            "type": "string"
+                                        },
+                                        "user": {
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -68,15 +97,10 @@
                             }
                         }
                     },
-                    "401": {
-                        "description": "Unauthenticated"
+                    "422": {
+                        "description": "Invalid credentials"
                     }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
+                }
             }
         },
         "/api/weather/{city}": {
@@ -151,8 +175,8 @@
     },
     "tags": [
         {
-            "name": "User",
-            "description": "User"
+            "name": "Auth",
+            "description": "Auth"
         },
         {
             "name": "Weather",
