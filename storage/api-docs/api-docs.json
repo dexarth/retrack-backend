@@ -6,6 +6,58 @@
         "version": "1.0.0"
     },
     "paths": {
+        "/api/listing/{table}": {
+            "get": {
+                "tags": [
+                    "Listing"
+                ],
+                "summary": "Get listing of a table",
+                "description": "Returns all data from a whitelisted table using its associated model.",
+                "operationId": "c98ee4534af8855610f7f82d282e1f3a",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "description": "The name of the table to list data from (must be in the allowed list)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Table not allowed"
+                    },
+                    "404": {
+                        "description": "Model not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/me": {
             "get": {
                 "tags": [
@@ -210,6 +262,10 @@
         }
     },
     "tags": [
+        {
+            "name": "Listing",
+            "description": "Listing"
+        },
         {
             "name": "Auth",
             "description": "Auth"
