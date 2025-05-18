@@ -71,6 +71,3 @@ Route::middleware([
     Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
     Route::post('/generate-token', [ProfileTokenController::class, 'generate'])->name('token.generate');
 });
-
-// Logout
-// Route::get('/logout', [UserController::class, 'logout']);
