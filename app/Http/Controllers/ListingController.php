@@ -42,9 +42,9 @@ class ListingController extends Controller
      */
     public function getListing(Request $request, $table)
     {
-        // Whitelisted tables from DB
+        // Whitelisted tables from DB based on 'read' permission
         $allowedTables = DB::table('allowed_tables')
-            ->where('is_active', true)
+            ->where('read', true)
             ->pluck('table_name')
             ->toArray();
 
@@ -66,6 +66,7 @@ class ListingController extends Controller
             return response()->json(['error' => 'Error fetching data: ' . $e->getMessage()], 500);
         }
     }
+
 
     protected function resolveModelFromTable(string $table): ?string
     {

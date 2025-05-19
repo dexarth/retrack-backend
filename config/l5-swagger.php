@@ -49,6 +49,7 @@ return [
                     base_path('app/Http/Controllers/WeatherController.php'),
                     base_path('app/Http/Controllers/UserController.php'),
                     base_path('app/Http/Controllers/ListingController.php'),
+                    base_path('app/Http/Controllers/FormController.php'),
                 ],
             ],
         ],

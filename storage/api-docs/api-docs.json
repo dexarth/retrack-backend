@@ -6,6 +6,115 @@
         "version": "1.0.0"
     },
     "paths": {
+        "/api/form/submit/{table}": {
+            "post": {
+                "tags": [
+                    "Form"
+                ],
+                "summary": "Submit new record to a dynamic table",
+                "description": "Submits a new record to a whitelisted table with create permission using its associated model.",
+                "operationId": "9ae5acae3efe8159f0060040b5dd6fd3",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "description": "The target table name (must be allowed and have 'create' permission)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Form fields (dynamic, depends on the table/model)",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {},
+                            "example": {
+                                "name": "Sample Name",
+                                "description": "Some description"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Data submitted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data submitted successfully."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Table not allowed or create permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Table not allowed or create permission denied."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Model not found for this table",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Model not found for this table."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to submit data",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Failed to submit data."
+                                        },
+                                        "details": {
+                                            "type": "string",
+                                            "example": "SQLSTATE[23000]: Integrity constraint violation..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/listing/{table}": {
             "get": {
                 "tags": [
@@ -262,6 +371,10 @@
         }
     },
     "tags": [
+        {
+            "name": "Form",
+            "description": "Form"
+        },
         {
             "name": "Listing",
             "description": "Listing"
