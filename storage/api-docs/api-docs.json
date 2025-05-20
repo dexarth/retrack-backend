@@ -6,19 +6,19 @@
         "version": "1.0.0"
     },
     "paths": {
-        "/api/form/submit/{table}": {
+        "/api/form-submit/{formName}": {
             "post": {
                 "tags": [
                     "Form"
                 ],
-                "summary": "Submit new record to a dynamic table",
-                "description": "Submits a new record to a whitelisted table with create permission using its associated model.",
-                "operationId": "9ae5acae3efe8159f0060040b5dd6fd3",
+                "summary": "Submit data for a multi-table form",
+                "description": "Handles dynamic form submission involving multiple related tables using configured table_relations.",
+                "operationId": "fca6daf4ee41e293d8876535dcc6170e",
                 "parameters": [
                     {
-                        "name": "table",
+                        "name": "formName",
                         "in": "path",
-                        "description": "The target table name (must be allowed and have 'create' permission)",
+                        "description": "The identifier for the form defined in table_relations (e.g., mentor_form)",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -26,14 +26,21 @@
                     }
                 ],
                 "requestBody": {
-                    "description": "Form fields (dynamic, depends on the table/model)",
+                    "description": "Payload should contain objects for each table defined in the relation. The primary table data and related table data must be included.",
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {},
                             "example": {
-                                "name": "Sample Name",
-                                "description": "Some description"
+                                "users": {
+                                    "name": "Ali",
+                                    "email": "ali@example.com",
+                                    "password": "secret123"
+                                },
+                                "mentors": {
+                                    "pangkat": "SARJAN",
+                                    "parol_daerah": "BEAUFORT"
+                                }
                             }
                         }
                     }
@@ -55,15 +62,15 @@
                             }
                         }
                     },
-                    "403": {
-                        "description": "Table not allowed or create permission denied",
+                    "400": {
+                        "description": "Form relation not defined or invalid data structure",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "error": {
                                             "type": "string",
-                                            "example": "Table not allowed or create permission denied."
+                                            "example": "Form relation not defined."
                                         }
                                     },
                                     "type": "object"
@@ -72,7 +79,7 @@
                         }
                     },
                     "404": {
-                        "description": "Model not found for this table",
+                        "description": "Model class not found for a table",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -88,14 +95,14 @@
                         }
                     },
                     "500": {
-                        "description": "Failed to submit data",
+                        "description": "Failed to submit data due to a server error or DB constraint",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "error": {
                                             "type": "string",
-                                            "example": "Failed to submit data."
+                                            "example": "Submission failed"
                                         },
                                         "details": {
                                             "type": "string",

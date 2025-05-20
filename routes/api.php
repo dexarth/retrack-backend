@@ -30,4 +30,4 @@ Route::post('/login', [UserController::class, 'login']);
 Route::middleware('auth:sanctum')->get('/listing/{table}', [ListingController::class, 'getListing']);
 
 //create new records
-Route::middleware('auth:sanctum')->post('/form/submit/{table}', [FormController::class, 'submit']);
+Route::middleware('auth:sanctum')->post('/form-submit/{formName}', [FormController::class, 'submitForm']);

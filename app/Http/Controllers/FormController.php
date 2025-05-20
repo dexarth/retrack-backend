@@ -11,23 +11,33 @@ class FormController extends Controller
 {
     /**
      * @OA\Post(
-     *     path="/api/form/submit/{table}",
+     *     path="/api/form-submit/{formName}",
      *     tags={"Form"},
-     *     summary="Submit new record to a dynamic table",
-     *     description="Submits a new record to a whitelisted table with create permission using its associated model.",
+     *     summary="Submit data for a multi-table form",
+     *     description="Handles dynamic form submission involving multiple related tables using configured table_relations.",
      *     security={{"sanctum":{}}},
      *     @OA\Parameter(
-     *         name="table",
+     *         name="formName",
      *         in="path",
      *         required=true,
-     *         description="The target table name (must be allowed and have 'create' permission)",
+     *         description="The identifier for the form defined in table_relations (e.g., mentor_form)",
      *         @OA\Schema(type="string")
      *     ),
      *     @OA\RequestBody(
      *         required=true,
-     *         description="Form fields (dynamic, depends on the table/model)",
+     *         description="Payload should contain objects for each table defined in the relation. The primary table data and related table data must be included.",
      *         @OA\JsonContent(
-     *             example={"name": "Sample Name", "description": "Some description"}
+     *             example={
+     *                 "users": {
+     *                     "name": "Ali",
+     *                     "email": "ali@example.com",
+     *                     "password": "secret123"
+     *                 },
+     *                 "mentors": {
+     *                     "pangkat": "SARJAN",
+     *                     "parol_daerah": "BEAUFORT"
+     *                 }
+     *             }
      *         )
      *     ),
      *     @OA\Response(
@@ -38,68 +48,88 @@ class FormController extends Controller
      *         )
      *     ),
      *     @OA\Response(
-     *         response=403,
-     *         description="Table not allowed or create permission denied",
+     *         response=400,
+     *         description="Form relation not defined or invalid data structure",
      *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="Table not allowed or create permission denied.")
+     *             @OA\Property(property="error", type="string", example="Form relation not defined.")
      *         )
      *     ),
      *     @OA\Response(
      *         response=404,
-     *         description="Model not found for this table",
+     *         description="Model class not found for a table",
      *         @OA\JsonContent(
      *             @OA\Property(property="error", type="string", example="Model not found for this table.")
      *         )
      *     ),
      *     @OA\Response(
      *         response=500,
-     *         description="Failed to submit data",
+     *         description="Failed to submit data due to a server error or DB constraint",
      *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="Failed to submit data."),
+     *             @OA\Property(property="error", type="string", example="Submission failed"),
      *             @OA\Property(property="details", type="string", example="SQLSTATE[23000]: Integrity constraint violation...")
      *         )
      *     )
      * )
      */
-    public function submit(Request $request, $table)
+    public function submitForm(Request $request, string $formName)
     {
-        $isAllowed = DB::table('allowed_tables')
-            ->where('table_name', $table)
-            ->where('create', true)
-            ->exists();
+        $relation = DB::table('table_relations')->where('form_name', $formName)->first();
 
-        if (!$isAllowed) {
-            return response()->json(['error' => 'Table not allowed or create permission denied.'], 403);
+        if (!$relation) {
+            return response()->json(['error' => 'Form relation not defined.'], 400);
         }
 
-        //Resolve model class
-        $modelClass = $this->resolveModelFromTable($table);
-        if (!$modelClass || !class_exists($modelClass)) {
-            return response()->json(['error' => 'Model not found for this table.'], 404);
-        }
+        DB::beginTransaction();
 
         try {
-            //Use model to create record
-            $model = new $modelClass();
+            // 1. Create primary table record (e.g., users)
+            $primaryData = $request->input($relation->primary_table);
+            if (isset($primaryData['password'])) {
+                $primaryData['password'] = bcrypt($primaryData['password']);
+            }
 
-            // Filter only fillable attributes (mass-assignment protection)
-            $fillable = $model->getFillable();
-            $data = $request->only($fillable);
+            $primaryModel = $this->resolveModelFromTable($relation->primary_table);
+            $primary = $primaryModel::create($primaryData);
 
-            $model->fill($data);
-            $model->save();
+            // 2. Check if related table exists
+            if ($relation->related_table) {
+                $relatedData = $request->input($relation->related_table);
+                $relatedData[$relation->foreign_key] = $primary->{$relation->primary_column};
 
-            return response()->json(['message' => 'Data submitted successfully.'], 200);
+                // Copy fields if needed
+                if ($relation->field_copy_map) {
+                    $copies = json_decode($relation->field_copy_map, true);
+                    foreach ($copies as $relatedField => $sourceField) {
+                        $relatedData[$relatedField] = $primary->{$sourceField};
+                    }
+                }
+
+                // Create related table record
+                $relatedModel = $this->resolveModelFromTable($relation->related_table);
+                $relatedModel::create($relatedData);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Data submitted successfully']);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to submit data.', 'details' => $e->getMessage()], 500);
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Submission failed',
+                'details' => $e->getMessage()
+            ], 500);
         }
     }
+
+
 
     protected function resolveModelFromTable(string $table): ?string
     {
         // Manual override
         $map = [
             'menus' => \App\Models\Menu::class,
+            'users' => \App\Models\User::class,
+            'mentors' => \App\Models\Mentor::class,
+            'mentees' => \App\Models\Mentee::class,
         ];
 
         if (isset($map[$table])) {
