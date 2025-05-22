@@ -31,3 +31,6 @@ Route::middleware('auth:sanctum')->get('/listing/{table}', [ListingController::c
 
 //create new records
 Route::middleware('auth:sanctum')->post('/form-submit/{formName}', [FormController::class, 'submitForm']);
+
+//update records
+Route::middleware('auth:sanctum')->put('/form-submit/{formName}/{id}', [FormController::class, 'updateForm']);

@@ -122,6 +122,130 @@
                 ]
             }
         },
+        "/api/form-submit/{formName}/{id}": {
+            "put": {
+                "tags": [
+                    "Form"
+                ],
+                "summary": "Update data for a multi-table form",
+                "description": "Handles dynamic form update involving multiple related tables using configured table_relations. Tracks changes with a log.",
+                "operationId": "51b538d597c8fba772d5797c16eb047b",
+                "parameters": [
+                    {
+                        "name": "formName",
+                        "in": "path",
+                        "description": "The identifier for the form defined in table_relations (e.g., mentor_form)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "The ID of the primary record to update",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Payload containing objects for each related table defined in the form relation. Includes primary and related table data for update.",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {},
+                            "example": {
+                                "users": {
+                                    "name": "Ali Updated",
+                                    "email": "ali_updated@example.com"
+                                },
+                                "mentors": {
+                                    "pangkat": "SARJAN UPDATED",
+                                    "parol_daerah": "BEAUFORT UPDATED"
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Data updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data updated successfully."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Form relation not defined or invalid data structure",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Form relation not defined."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Model class or record not found for a table",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Model or record not found for this table."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update data due to a server error or DB constraint",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Update failed"
+                                        },
+                                        "details": {
+                                            "type": "string",
+                                            "example": "SQLSTATE[23000]: Integrity constraint violation..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/listing/{table}": {
             "get": {
                 "tags": [
