@@ -298,6 +298,61 @@
                 ]
             }
         },
+        "/api/form-show/{formName}/{id}": {
+            "get": {
+                "tags": [
+                    "Listing"
+                ],
+                "summary": "Fetch single record (multi-table or single-table)",
+                "description": "Returns single record based on a form relation (multi-table) or from a single table if no relation is found.",
+                "operationId": "4cb8c79e753c3d2057e13915857c673d",
+                "parameters": [
+                    {
+                        "name": "formName",
+                        "in": "path",
+                        "description": "Form name (from table_relations) or table name (for single table)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Primary record ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Record retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Model or record not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/me": {
             "get": {
                 "tags": [
