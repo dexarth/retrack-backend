@@ -294,13 +294,16 @@ class FormController extends Controller
     protected function resolveModelFromTable(string $table): ?string
     {
         // Manual override
-        $map = [
-            'menus' => \App\Models\Menu::class,
-            'users' => \App\Models\User::class,
-            'mentors' => \App\Models\Mentor::class,
-            'mentees' => \App\Models\Mentee::class,
-            'categories' => \App\Models\Category::class,
-        ];
+//        $map = [
+//            'menus' => \App\Models\Menu::class,
+//            'users' => \App\Models\User::class,
+//            'mentors' => \App\Models\Mentor::class,
+//            'mentees' => \App\Models\Mentee::class,
+//            'categories' => \App\Models\Category::class,
+//            'laporan' => \App\Models\Laporan::class,
+//        ];
+
+        $map = DB::table('model_mappings')->where('key', $table)->value('model_class');
 
         if (isset($map[$table])) {
             return $map[$table];
