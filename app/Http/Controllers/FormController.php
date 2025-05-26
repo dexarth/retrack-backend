@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -71,6 +72,26 @@ class FormController extends Controller
      *     )
      * )
      */
+    private function storeAndMapFiles(array $files, string $table): array
+    {
+        $paths = [];
+
+        foreach ($files as $field => $value) {
+            if ($value instanceof UploadedFile && $value->isValid()) {
+                $paths[$field] = $value->store("uploads/{$table}/{$field}", 'public');
+            } elseif (is_array($value)) {
+                $paths[$field] = [];
+                foreach ($value as $file) {
+                    if ($file instanceof UploadedFile && $file->isValid()) {
+                        $paths[$field][] = $file->store("uploads/{$table}/{$field}", 'public');
+                    }
+                }
+            }
+        }
+
+        return $paths;
+    }
+
     public function submitForm(Request $request, string $formName)
     {
         $relation = DB::table('table_relations')->where('form_name', $formName)->first();
@@ -82,8 +103,16 @@ class FormController extends Controller
         DB::beginTransaction();
 
         try {
-            // 1. Create primary table record (e.g., users)
-            $primaryData = $request->input($relation->primary_table);
+            // === PRIMARY ===
+            $primaryData = $request->input($relation->primary_table, []);
+            $primaryFiles = $request->hasFile($relation->primary_table)
+                ? $request->file($relation->primary_table)
+                : [];
+            $primaryData = array_merge(
+                $primaryData,
+                $this->storeAndMapFiles($primaryFiles, $relation->primary_table)
+            );
+
             if (isset($primaryData['password'])) {
                 $primaryData['password'] = bcrypt($primaryData['password']);
             }
@@ -91,12 +120,19 @@ class FormController extends Controller
             $primaryModel = $this->resolveModelFromTable($relation->primary_table);
             $primary = $primaryModel::create($primaryData);
 
-            // 2. Check if related table exists
+            // === RELATED ===
             if ($relation->related_table) {
-                $relatedData = $request->input($relation->related_table);
+                $relatedData = $request->input($relation->related_table, []);
+                $relatedFiles = $request->hasFile($relation->related_table)
+                    ? $request->file($relation->related_table)
+                    : [];
+                $relatedData = array_merge(
+                    $relatedData,
+                    $this->storeAndMapFiles($relatedFiles, $relation->related_table)
+                );
+
                 $relatedData[$relation->foreign_key] = $primary->{$relation->primary_column};
 
-                // Copy fields if needed
                 if ($relation->field_copy_map) {
                     $copies = json_decode($relation->field_copy_map, true);
                     foreach ($copies as $relatedField => $sourceField) {
@@ -104,7 +140,6 @@ class FormController extends Controller
                     }
                 }
 
-                // Create related table record
                 $relatedModel = $this->resolveModelFromTable($relation->related_table);
                 $relatedModel::create($relatedData);
             }

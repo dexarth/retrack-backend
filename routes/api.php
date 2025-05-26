@@ -6,6 +6,7 @@ use App\Http\Controllers\WeatherController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\FormController;
+use App\Http\Controllers\ImageController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -37,5 +38,7 @@ Route::middleware('auth:sanctum')->put('/form-submit/{formName}/{id}', [FormCont
 
 //get single listing data
 Route::middleware('auth:sanctum')->get('/form-show/{formName}/{id}', [ListingController::class, 'getSingleRecord']);
+
+
 
 
