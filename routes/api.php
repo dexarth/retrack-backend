@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->put('/form-submit/{formName}/{id}', [FormCont
 //get single listing data
 Route::middleware('auth:sanctum')->get('/form-show/{formName}/{id}', [ListingController::class, 'getSingleRecord']);
 
-
+//get authenticated user data
+Route::middleware('auth:sanctum')->get('/form-show/auth-user', [UserController::class, 'show']);
 
 

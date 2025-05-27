@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Cookie;
+use App\Models\Admin;
+use App\Models\Mentor;
+use App\Models\Mentee;
 
 class UserController extends Controller
 {
@@ -121,4 +124,39 @@ class UserController extends Controller
             'message' => 'Logged out successfully',
         ]);
     }
+
+    public function show(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        // Load related profile based on role
+        $profile = null;
+
+        switch ($user->role) {
+            case 'admin':
+                $profile = Admin::where('user_id', $user->id)->first();
+                break;
+            case 'mentor':
+                $profile = Mentor::where('user_id', $user->id)->first();
+                break;
+            case 'mentee':
+                $profile = Mentee::where('user_id', $user->id)->first();
+                break;
+            default:
+                return response()->json(['message' => 'Role tidak sah'], 400);
+        }
+
+        return response()->json([
+            'id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
+            'role' => $user->role,
+            ...($profile ? $profile->toArray() : []),
+        ]);
+    }
+
 }
