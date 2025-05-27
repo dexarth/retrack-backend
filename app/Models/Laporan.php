@@ -18,7 +18,9 @@ class Laporan extends Model
         'bukti_audio',
         'bukti_gambar',
         'mentor_id',
-        'mentee_id'
+        'mentee_id',
+        'status',
+        'ulasan'
     ];
 
     /**
