@@ -156,15 +156,6 @@ class ListingController extends Controller
 
     protected function resolveModelFromTable(string $table): ?string
     {
-        // Manual mapping
-//        $map = [
-//            'menus' => \App\Models\Menu::class,
-//            'users' => \App\Models\User::class,
-//            'mentors' => \App\Models\Mentor::class,
-//            'mentees' => \App\Models\Mentee::class,
-//            'categories' => \App\Models\Category::class,
-//        ];
-
         $map = DB::table('model_mappings')->where('key', $table)->value('model_class');
 
         // Check if manually mapped
