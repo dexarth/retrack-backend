@@ -37,7 +37,7 @@ class CreateBlogsTable extends Migration
             $table->longText('content');
             $table->string('featured_image')->nullable();
 
-            $table->enum('status', ['draft', 'published'])->default('draft');
+            $table->enum('status', ['draft','diarkibkan','diterbitkan'])->default('draft');
 
             $table->unsignedBigInteger('author_id');
             $table->foreign('author_id')->references('id')->on('users')->onDelete('cascade');
