@@ -60,7 +60,11 @@ class ListingController extends Controller
         }
 
         try {
-            $data = $modelClass::all();
+            if ($table === 'blogs') {
+                $data = $modelClass::with('blog_category.category')->get();
+            }else {
+                $data = $modelClass::all();
+            }
             return response()->json(['data' => $data]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error fetching data: ' . $e->getMessage()], 500);
