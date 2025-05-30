@@ -28,7 +28,7 @@ class Laporan extends Model
      */
     public function mentor()
     {
-        return $this->belongsTo(Users::class, 'mentor_id');
+        return $this->belongsTo(Mentor::class, 'mentor_id', 'user_id');
     }
 
     /**
@@ -36,6 +36,6 @@ class Laporan extends Model
      */
     public function mentee()
     {
-        return $this->belongsTo(Users::class, 'mentee_id');
+        return $this->belongsTo(Mentee::class, 'mentee_id', 'user_id');
     }
 }

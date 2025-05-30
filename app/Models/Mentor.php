@@ -24,4 +24,10 @@ class Mentor extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function mentees()
+    {
+        return $this->hasMany(Mentee::class, 'mentor_id', 'user_id');
+    }
+
 }

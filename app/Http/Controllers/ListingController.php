@@ -62,7 +62,12 @@ class ListingController extends Controller
         try {
             if ($table === 'blogs') {
                 $data = $modelClass::with('blog_category.category')->get();
-            }else {
+            }else if ($table === 'mentors') {
+                $data = $modelClass::withCount('mentees')->get();
+            }else if ($table === 'lapordiri' || $table === 'laporan') {
+                $data = $modelClass::with(['mentor', 'mentee'])->get();
+            }
+            else {
                 $data = $modelClass::all();
             }
             return response()->json(['data' => $data]);

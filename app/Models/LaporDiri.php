@@ -23,11 +23,12 @@ class LaporDiri extends Model
     // Relationships
     public function mentor()
     {
-        return $this->belongsTo(User::class, 'mentor_id');
+        return $this->belongsTo(Mentor::class, 'mentor_id', 'user_id');
     }
 
     public function mentee()
     {
-        return $this->belongsTo(User::class, 'mentee_id');
+        return $this->belongsTo(Mentee::class, 'mentee_id', 'user_id');
     }
+
 }
