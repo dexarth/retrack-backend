@@ -30,6 +30,9 @@ Route::middleware('auth:sanctum')->get('/me', [UserController::class, 'me']);
 //get listing table
 Route::middleware('auth:sanctum')->get('/listing/{table}', [ListingController::class, 'getListing']);
 
+//get listing table with filter
+Route::middleware('auth:sanctum')->get('/listing-filter/{table}', [ListingController::class, 'getListingWithFilter']);
+
 //create new records
 Route::middleware('auth:sanctum')->post('/form-submit/{formName}', [FormController::class, 'submitForm']);
 

@@ -298,6 +298,66 @@
                 ]
             }
         },
+        "/api/listing-filter/{table}": {
+            "get": {
+                "tags": [
+                    "Listing"
+                ],
+                "summary": "Get filtered listing of a table",
+                "operationId": "getListingWithFilter",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "description": "Whitelisted table name",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "filters[mentee_id]",
+                        "in": "query",
+                        "description": "Filter by mentee_id",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Table not allowed"
+                    },
+                    "404": {
+                        "description": "Model not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/form-show/{formName}/{id}": {
             "get": {
                 "tags": [

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ListingController extends Controller
 {
@@ -74,6 +75,67 @@ class ListingController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error fetching data: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/listing-filter/{table}",
+     *     operationId="getListingWithFilter",
+     *     tags={"Listing"},
+     *     summary="Get filtered listing of a table",
+     *     security={{"sanctum":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="table",
+     *         in="path",
+     *         required=true,
+     *         description="Whitelisted table name",
+     *         @OA\Schema(type="string")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="filters[mentee_id]",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by mentee_id",
+     *         @OA\Schema(type="string")
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Success",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(response=403, description="Table not allowed"),
+     *     @OA\Response(response=404, description="Model not found")
+     * )
+     */
+    public function getListingWithFilter(Request $request, $table)
+    {
+        $allowed = DB::table('allowed_tables')->where('read', true)->pluck('table_name')->toArray();
+        if (!in_array($table, $allowed)) {
+            return response()->json(['error'=>'Table not allowed.'], 403);
+        }
+
+        $modelClass = $this->resolveModelFromTable($table);
+        if (!$modelClass || !class_exists($modelClass)) {
+            return response()->json(['error'=>'Model not found.'], 404);
+        }
+
+        $query = $modelClass::query();
+
+        // grab only the filters[...] query parameters
+        $filters = $request->get('filters', []);
+        foreach ($filters as $column => $value) {
+            // optionally: guard against invalid columns
+            if (Schema::hasColumn((new $modelClass)->getTable(), $column)) {
+                $query->where($column, $value);
+            }
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     /**
