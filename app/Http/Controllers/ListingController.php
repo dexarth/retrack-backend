@@ -94,10 +94,10 @@ class ListingController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="filters[mentee_id]",
+     *         name="filters[role]",
      *         in="query",
      *         required=false,
-     *         description="Filter by mentee_id",
+     *         description="Filter by role",
      *         @OA\Schema(type="string")
      *     ),
      *
