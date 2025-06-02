@@ -128,7 +128,7 @@
                     "Form"
                 ],
                 "summary": "Update data for a multi-table form",
-                "description": "Handles dynamic form update involving multiple related tables using configured table_relations. Tracks changes with a log.",
+                "description": "Handles dynamic form update involving multiple related tables using configured table_relations. Tracks changes and supports file uploads.",
                 "operationId": "51b538d597c8fba772d5797c16eb047b",
                 "parameters": [
                     {
@@ -151,20 +151,38 @@
                     }
                 ],
                 "requestBody": {
-                    "description": "Payload containing objects for each related table defined in the form relation. Includes primary and related table data for update.",
+                    "description": "Form data including files and fields for both primary and related tables",
                     "required": true,
                     "content": {
-                        "application/json": {
-                            "schema": {},
-                            "example": {
-                                "users": {
-                                    "name": "Ali Updated",
-                                    "email": "ali_updated@example.com"
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "users[name]": {
+                                        "type": "string",
+                                        "example": "Ali Updated"
+                                    },
+                                    "users[email]": {
+                                        "type": "string",
+                                        "example": "ali_updated@example.com"
+                                    },
+                                    "users[avatar]": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "mentors[pangkat]": {
+                                        "type": "string",
+                                        "example": "SARJAN UPDATED"
+                                    },
+                                    "mentors[parol_daerah]": {
+                                        "type": "string",
+                                        "example": "BEAUFORT UPDATED"
+                                    },
+                                    "mentors[profile_picture]": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
                                 },
-                                "mentors": {
-                                    "pangkat": "SARJAN UPDATED",
-                                    "parol_daerah": "BEAUFORT UPDATED"
-                                }
+                                "type": "object"
                             }
                         }
                     }
@@ -322,6 +340,101 @@
                         "required": false,
                         "schema": {
                             "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Table not allowed"
+                    },
+                    "404": {
+                        "description": "Model not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/listing-join-filter/{table}": {
+            "get": {
+                "tags": [
+                    "Listing"
+                ],
+                "summary": "Get listing with dynamic joins and filters",
+                "description": "Returns records from a table with optional relationship joins, filters, and sorting. Relationships must be defined in the Eloquent model.",
+                "operationId": "c1cf0256284e2b130fcad8c3fc134554",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "description": "Name of the whitelisted table (e.g., 'laporan', 'mentee')",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "with[]",
+                        "in": "query",
+                        "description": "Relationship(s) to eager load (e.g., mentee, mentor)",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "name": "filters[column]",
+                        "in": "query",
+                        "description": "Filter records by column values (e.g., filters[mentee_id]=25)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Column to sort by (e.g., 'created_at')",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "description": "Sort direction (asc or desc). Default is asc.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
                         }
                     }
                 ],

@@ -33,6 +33,9 @@ Route::middleware('auth:sanctum')->get('/listing/{table}', [ListingController::c
 //get listing table with filter
 Route::middleware('auth:sanctum')->get('/listing-filter/{table}', [ListingController::class, 'getListingWithFilter']);
 
+//get listing table with join filter
+Route::middleware('auth:sanctum')->get('/listing-join-filter/{table}', [ListingController::class, 'getListingJoinFilter']);
+
 //create new records
 Route::middleware('auth:sanctum')->post('/form-submit/{formName}', [FormController::class, 'submitForm']);
 
@@ -44,5 +47,6 @@ Route::middleware('auth:sanctum')->get('/form-show/{formName}/{id}', [ListingCon
 
 //get authenticated user data
 Route::middleware('auth:sanctum')->get('/form-show/auth-user', [UserController::class, 'show']);
+
 
 
