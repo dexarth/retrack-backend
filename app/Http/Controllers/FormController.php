@@ -160,7 +160,7 @@ class FormController extends Controller
      *     path="/api/form-submit/{formName}/{id}",
      *     tags={"Form"},
      *     summary="Update data for a multi-table form",
-     *     description="Handles dynamic form update involving multiple related tables using configured table_relations. Tracks changes with a log.",
+     *     description="Handles dynamic form update involving multiple related tables using configured table_relations. Tracks changes and supports file uploads.",
      *     security={{"sanctum":{}}},
      *     @OA\Parameter(
      *         name="formName",
@@ -178,18 +178,18 @@ class FormController extends Controller
      *     ),
      *     @OA\RequestBody(
      *         required=true,
-     *         description="Payload containing objects for each related table defined in the form relation. Includes primary and related table data for update.",
-     *         @OA\JsonContent(
-     *             example={
-     *                 "users": {
-     *                     "name": "Ali Updated",
-     *                     "email": "ali_updated@example.com"
-     *                 },
-     *                 "mentors": {
-     *                     "pangkat": "SARJAN UPDATED",
-     *                     "parol_daerah": "BEAUFORT UPDATED"
-     *                 }
-     *             }
+     *         description="Form data including files and fields for both primary and related tables",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 type="object",
+     *                 @OA\Property(property="users[name]", type="string", example="Ali Updated"),
+     *                 @OA\Property(property="users[email]", type="string", example="ali_updated@example.com"),
+     *                 @OA\Property(property="users[avatar]", type="string", format="binary"),
+     *                 @OA\Property(property="mentors[pangkat]", type="string", example="SARJAN UPDATED"),
+     *                 @OA\Property(property="mentors[parol_daerah]", type="string", example="BEAUFORT UPDATED"),
+     *                 @OA\Property(property="mentors[profile_picture]", type="string", format="binary")
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -231,27 +231,42 @@ class FormController extends Controller
             return response()->json(['error' => 'Form relation not defined.'], 400);
         }
 
-        $payload = $request->all();
-        info('Request All:', $request->all());
         DB::beginTransaction();
 
         try {
-            // Step 1: Get primary table info
             $primaryTable = $relationConfig->first()->primary_table;
             $primaryColumn = $relationConfig->first()->primary_column ?? 'id';
+
+            $payload = $request->all();
             $primaryData = $payload[$primaryTable] ?? null;
+
+            if (!$primaryData) {
+                $primaryData = [];
+
+                foreach ($request->all() as $key => $value) {
+                    if (preg_match('/^' . preg_quote($primaryTable) . '\[(.+?)\]$/', $key, $matches)) {
+                        $field = $matches[1];
+                        $primaryData[$field] = $value;
+                    }
+                }
+            }
+
+            // Process file uploads for primary table
+            $primaryFiles = $request->hasFile($primaryTable) ? $request->file($primaryTable) : [];
+
+            if (!empty($primaryFiles)) {
+                $primaryData = array_merge($primaryData, $this->storeAndMapFiles($primaryFiles, $primaryTable));
+            }
 
             if (!$primaryData) {
                 return response()->json(['error' => "Missing data for primary table: $primaryTable"], 400);
             }
 
-            // Step 2: Resolve model class
             $primaryModelClass = $this->resolveModelFromTable($primaryTable);
             if (!$primaryModelClass) {
                 return response()->json(['error' => "Model not found for table: $primaryTable"], 404);
             }
 
-            // Step 3: Fetch existing record by primary_column
             $primaryId = $primaryData[$primaryColumn] ?? $routeId;
             $existingPrimaryModel = $primaryModelClass::find($primaryId);
 
@@ -259,17 +274,22 @@ class FormController extends Controller
                 return response()->json(['error' => "Primary record not found."], 404);
             }
 
-            // Step 4: Log changes
             $this->logChanges($formName, $primaryTable, $primaryId, $existingPrimaryModel->toArray(), $primaryData);
-
-            // Step 5: Update record
             $existingPrimaryModel->update($primaryData);
 
-            // Step 6: Handle related tables (optional)
+            // Related tables
             foreach ($relationConfig as $relation) {
                 if (!$relation->related_table) continue;
 
                 $relatedData = $payload[$relation->related_table] ?? null;
+                $relatedFiles = $request->hasFile($relation->related_table)
+                    ? $request->file($relation->related_table)
+                    : [];
+
+                if ($relatedFiles) {
+                    $relatedData = array_merge($relatedData ?? [], $this->storeAndMapFiles($relatedFiles, $relation->related_table));
+                }
+
                 if (!$relatedData) continue;
 
                 $relatedModelClass = $this->resolveModelFromTable($relation->related_table);
@@ -293,6 +313,7 @@ class FormController extends Controller
             return response()->json(['error' => 'Update failed', 'details' => $e->getMessage()], 500);
         }
     }
+
 
 
     protected function logChanges(string $form, string $table, int $id, array $old, array $new): void
