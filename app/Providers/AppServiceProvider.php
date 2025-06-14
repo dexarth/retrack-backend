@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Contracts\LoginResponse;
 use App\Actions\CustomLoginResponse;
 use App\Actions\RegisterLoginResponse;
+use App\Events\PusherTestEvent;
+use Illuminate\Notifications\DatabaseNotification;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        DatabaseNotification::created(function (DatabaseNotification $note) {
+            $payload = $note->data;
+            event(new PusherTestEvent($payload));
+        });
     }
 }

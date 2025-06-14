@@ -21,11 +21,11 @@ class BlogCategory extends Model
     // Relationships
     public function blog()
     {
-        return $this->belongsTo(Blog::class);
+        return $this->belongsTo(Blog::class,'blog_id', 'id');
     }
 
     public function category()
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class,'category_id', 'id');
     }
 }

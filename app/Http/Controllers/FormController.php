@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Http\Controllers\NotificationController;
 
 class FormController extends Controller
 {
@@ -120,6 +121,8 @@ class FormController extends Controller
             $primaryModel = $this->resolveModelFromTable($relation->primary_table);
             $primary = $primaryModel::create($primaryData);
 
+            NotificationController::trigger($relation->primary_table, $primary);
+
             // === RELATED ===
             if ($relation->related_table) {
                 $relatedData = $request->input($relation->related_table, []);
@@ -142,6 +145,7 @@ class FormController extends Controller
 
                 $relatedModel = $this->resolveModelFromTable($relation->related_table);
                 $relatedModel::create($relatedData);
+
             }
 
             DB::commit();
