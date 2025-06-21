@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('alamat');
             $table->decimal('alamat_lat', 10, 7);   // Latitude
             $table->decimal('alamat_long', 10, 7);  // Longitude
-            $table->text('tujuan');      // Purpose
+            $table->text('tujuan')->nullable();      // Purpose
             // Bukti (evidence)
             $table->string('bukti_audio')->nullable();  // Voice recording file path
             $table->string('bukti_gambar'); // Photo file path
