@@ -41,7 +41,8 @@ class NotificationController extends Controller
                     $user->notify(new GeneralNotification($payload));
                 }
             } elseif (!empty($primary->{$config->receiver})) {
-                $receiver = \App\Models\User::find($primary->{$config->receiver});
+                $mentor = \App\Models\Mentor::find($primary->{$config->receiver});
+                $receiver = $mentor?->user; // assuming Mentor has relation `user()`
                 $receiver?->notify(new GeneralNotification($payload));
             }
 

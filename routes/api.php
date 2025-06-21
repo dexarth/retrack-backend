@@ -48,5 +48,10 @@ Route::middleware('auth:sanctum')->get('/form-show/{formName}/{id}', [ListingCon
 //get authenticated user data
 Route::middleware('auth:sanctum')->get('/form-show/auth-user', [UserController::class, 'show']);
 
+//get users notification
+Route::middleware('auth:sanctum')->get('/notifications', function () {
+    return auth()->user()->notifications()->latest()->take(10)->get();}
+);
+
 
 

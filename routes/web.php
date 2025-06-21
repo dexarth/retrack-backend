@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ProfileTokenController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Artisan;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Illuminate\Support\Facades\Broadcast;
 
 Route::get('/', function () {
     return view('welcome');
@@ -20,7 +22,7 @@ Route::get('/clear-cache', function () {
     Artisan::call('view:clear');       // Clear compiled views
     Artisan::call('event:clear');      // Clear event cache
     Artisan::call('optimize:clear');   // Clear all optimizations
-    
+
     return "All caches cleared successfully!";
 });
 
@@ -62,7 +64,6 @@ Route::get('/api/documentation', function () {
     ));
 })->name('l5-swagger.documentation');
 
-// Authenticated Routes (Sanctum + Jetstream + Email Verified)
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -70,4 +71,8 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
     Route::post('/generate-token', [ProfileTokenController::class, 'generate'])->name('token.generate');
+});
+
+Route::post('/broadcasting/auth', function () {
+    dd(auth()->user());
 });
