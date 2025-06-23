@@ -8,6 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Http\Controllers\NotificationController;
+use App\Models\Laporan;
 
 class FormController extends Controller
 {
@@ -95,6 +96,24 @@ class FormController extends Controller
 
     public function submitForm(Request $request, string $formName)
     {
+        if ($formName === 'laporan-mentee') {
+            $menteeId = $request->input('mentee_id') 
+                ?? $request->input('laporan_mentee.mentee_id') 
+                ?? auth()->id();
+
+            if (!$menteeId) {
+                return response()->json(['message' => 'ID mentee tidak dijumpai.'], 400);
+            }
+
+            $exists = Laporan::where('mentee_id', $menteeId)
+                ->whereDate('created_at', today())
+                ->exists();
+
+            if ($exists) {
+                return response()->json(['message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan sehari.'], 422);
+            }
+        }
+
         $relation = DB::table('table_relations')->where('form_name', $formName)->first();
 
         if (!$relation) {
