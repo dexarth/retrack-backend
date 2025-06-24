@@ -97,8 +97,8 @@ class FormController extends Controller
     public function submitForm(Request $request, string $formName)
     {
         if ($formName === 'laporan-mentee') {
-            $menteeId = $request->input('mentee_id') 
-                ?? $request->input('laporan_mentee.mentee_id') 
+            $menteeId = $request->input('mentee_id')
+                ?? $request->input('laporan_mentee.mentee_id')
                 ?? auth()->id();
 
             if (!$menteeId) {
@@ -111,6 +111,24 @@ class FormController extends Controller
 
             if ($exists) {
                 return response()->json(['message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan sehari.'], 422);
+            }
+        }
+
+        if ($formName === 'lapor-diri') {
+            $tarikh = $request->input('lapordiri.tarikh');
+            $masa = $request->input('lapordiri.masa');
+            $tempat = $request->input('lapordiri.tempat');
+
+            $exists = DB::table('lapordiri')
+                ->where('tempat', $tempat)
+                ->where('tarikh', $tarikh)
+                ->where('masa', $masa)
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'message' => 'Sila pilih slot yang lain. Lokasi bagi tarikh dan masa tersebut tidak tersedia.'
+                ], 422);
             }
         }
 
