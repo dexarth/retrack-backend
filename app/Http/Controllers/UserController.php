@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cookie;
 use App\Models\Admin;
 use App\Models\Mentor;
 use App\Models\Mentee;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -155,6 +156,7 @@ class UserController extends Controller
             'email' => $user->email,
             'name' => $user->name,
             'role' => $user->role,
+            'profile_photo_path' => Storage::url($user->profile_photo_path),
             ...($profile ? $profile->toArray() : []),
         ]);
     }
