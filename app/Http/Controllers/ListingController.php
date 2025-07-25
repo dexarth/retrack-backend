@@ -234,6 +234,15 @@ class ListingController extends Controller
             }
         }
 
+        // ——— NEW: date‐range on updated_at ———
+        if ($request->filled('from')) {
+            $query->whereDate('updated_at', '>=', $request->input('from'));
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('updated_at', '<=', $request->input('to'));
+        }
+        // ————————————————————————————————
+
         // Sorting: ?sort=created_at&order=desc
         if ($request->filled('sort')) {
             $query->orderBy($request->get('sort'), $request->get('order', 'asc'));
