@@ -158,8 +158,6 @@ class FormController extends Controller
             $primaryModel = $this->resolveModelFromTable($relation->primary_table);
             $primary = $primaryModel::create($primaryData);
 
-            NotificationController::trigger($relation->primary_table, $primary);
-
             // === RELATED ===
             if ($relation->related_table) {
                 $relatedData = $request->input($relation->related_table, []);
@@ -186,6 +184,13 @@ class FormController extends Controller
             }
 
             DB::commit();
+
+            //trigger notification
+            NotificationController::trigger(
+                $relation->primary_table,
+                $primary
+            );
+
             return response()->json(['message' => 'Data submitted successfully']);
         } catch (\Exception $e) {
             DB::rollBack();

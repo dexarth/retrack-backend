@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WeatherController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\TestNotificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -52,6 +54,14 @@ Route::middleware('auth:sanctum')->get('/form-show/auth-user', [UserController::
 Route::middleware('auth:sanctum')->get('/notifications', function () {
     return auth()->user()->notifications()->latest()->take(10)->get();}
 );
+
+Route::middleware('auth:sanctum')->post('/broadcasting/auth', function(){
+    return Broadcast::auth(request());
+});
+
+Route::middleware('auth:sanctum')
+    ->post('/test-notification', [TestNotificationController::class,'send']);
+
 
 
 

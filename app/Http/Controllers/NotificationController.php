@@ -11,6 +11,7 @@ class NotificationController extends Controller
     public static function trigger(string $tableName, $primary): void
     {
         try {
+            Log::info("data notification:", ['tableName' => $tableName, 'primary' => $primary]);
             $config = DB::table('notifications_config')->where('table_name', $tableName)->first();
             if (!$config) return;
 
@@ -41,8 +42,8 @@ class NotificationController extends Controller
                     $user->notify(new GeneralNotification($payload));
                 }
             } elseif (!empty($primary->{$config->receiver})) {
-                $mentor = \App\Models\Mentor::find($primary->{$config->receiver});
-                $receiver = $mentor?->user; // assuming Mentor has relation `user()`
+                // mentor_id actually holds the users.id, so find the User directly
+                $receiver = \App\Models\User::find($primary->{$config->receiver});
                 $receiver?->notify(new GeneralNotification($payload));
             }
 

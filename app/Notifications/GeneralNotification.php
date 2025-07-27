@@ -6,14 +6,12 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-class GeneralNotification extends Notification implements ShouldBroadcastNow
+class GeneralNotification extends Notification
 {
     use Queueable;
 
     protected array $payload;
-
     public function __construct(array $payload)
     {
         $this->payload = $payload;
@@ -29,19 +27,9 @@ class GeneralNotification extends Notification implements ShouldBroadcastNow
         return $this->payload;
     }
 
-    public function toBroadcast($notifiable): BroadcastMessage
+    public function toBroadcast($notifiable)
     {
+        // broadcast the same shape
         return new BroadcastMessage($this->payload);
-    }
-
-    // no $notifiable parameter here
-    public function broadcastOn(): PrivateChannel
-    {
-        return new Channel('retrack');
-    }
-
-    public function broadcastAs(): string
-    {
-        return 'general-notification';
     }
 }

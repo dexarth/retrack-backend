@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -166,11 +167,16 @@ class ListingController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="filters[column]",
+     *         name="filters",
      *         in="query",
      *         required=false,
-     *         description="Filter records by column values (e.g., filters[mentee_id]=25)",
-     *         @OA\Schema(type="string")
+     *         description="Filter by any column (e.g. ?filters[mentee_id]=25&filters[status]=active)",
+     *         @OA\Schema(
+     *            type="object",
+     *            additionalProperties=@OA\Schema(type="string")
+     *         ),
+     *         style="deepObject",
+     *         explode=true
      *     ),
      *
      *     @OA\Parameter(
@@ -228,7 +234,9 @@ class ListingController extends Controller
 
         // Apply filters: ?filters[column]=value
         $filters = $request->get('filters', []);
+        Log::info("filter:", $filters);
         foreach ($filters as $column => $value) {
+            Log::info("Applying filter:", ['column' => $column, 'value' => $value]);
             if (Schema::hasColumn((new $modelClass)->getTable(), $column)) {
                 $query->where($column, $value);
             }
