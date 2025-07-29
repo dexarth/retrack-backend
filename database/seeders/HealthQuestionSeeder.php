@@ -1,0 +1,172 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class HealthQuestionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        DB::table('health_questions')->insert([
+            [
+                'domain' => 'Perasaan Umum (Mood)',
+                'question_text' => 'Sepanjang hari ini, bagaimana keadaan emosi anda secara keseluruhan?',
+                'type' => 'likert',
+                'choices' => json_encode([
+                    'Sangat tertekan / marah / sedih',
+                    'Agak tertekan atau risau',
+                    'Biasa sahaja (neutral)',
+                    'Berasa agak tenang atau ceria',
+                    'Sangat tenang dan gembira',
+                ]),
+                'field_key' => 'mood',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Tahap Tekanan (Stress)',
+                'question_text' => 'Sejauh mana anda berasa tertekan hari ini?',
+                'type' => 'likert',
+                'choices' => json_encode([
+                    'Sangat tertekan sepanjang hari',
+                    'Agak tertekan kebanyakan masa',
+                    'Tekanan sederhana / tidak pasti',
+                    'Hanya sedikit tekanan',
+                    'Tidak langsung berasa tertekan',
+                ]),
+                'field_key' => 'stress',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 2,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Kualiti Tidur (Sleep Quality)',
+                'question_text' => 'Bagaimanakah tidur anda malam tadi?',
+                'type' => 'likert',
+                'choices' => json_encode([
+                    'Tidak tidur langsung',
+                    'Tidur sangat terganggu / sering terjaga',
+                    'Tidur sederhana (terjaga beberapa kali)',
+                    'Hampir nyenyak tetapi tidak sepenuhnya',
+                    'Tidur lena dan mencukupi (6 jam ke atas, nyenyak)',
+                ]),
+                'field_key' => 'sleep_quality',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 3,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Penggunaan Bahan (Substance Use)',
+                'question_text' => 'Soalan A: Adakah anda menggunakan mana-mana bahan berikut hari ini? (Tanda semua yang berkaitan)',
+                'type' => 'checkbox',
+                'choices' => json_encode([
+                    'Tiada penggunaan bahan',
+                    'Rokok atau vape',
+                    'Alkohol',
+                    'Dadah (sila nyatakan)',
+                    'Lain-lain (Sila nyatakan)',
+                ]),
+                'field_key' => 'substance_use',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 4,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Keinginan Guna (Craving)',
+                'question_text' => 'Soalan B (jika tiada penggunaan): Adakah anda berasa teringin menggunakan bahan hari ini?',
+                'type' => 'likert',
+                'choices' => json_encode([
+                    'Tidak langsung teringin',
+                    'Teringin sedikit',
+                    'Teringin sederhana',
+                    'Agak kuat keinginan',
+                    'Sangat kuat, sukar dikawal',
+                ]),
+                'field_key' => 'craving_score',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 5,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Aktiviti Bermakna (Meaningful Activity)',
+                'question_text' => 'Sejauh mana anda melakukan sesuatu yang bermakna atau menyokong pemulihan hari ini?',
+                'type' => 'likert',
+                'choices' => json_encode([
+                    'Tidak lakukan apa-apa langsung',
+                    'Hanya sedikit aktiviti (pasif, duduk sahaja)',
+                    'Aktiviti ringan (kemas bilik, sedia makanan)',
+                    'Aktiviti produktif (kerja rumah, bantu orang lain)',
+                    'Aktiviti utama (kerja, latihan, sukarelawan, jumpa orang)',
+                ]),
+                'field_key' => 'meaningful_activity',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 6,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Minat & Motivasi (Motivation)',
+                'question_text' => 'Adakah anda berasa seronok atau menantikan sesuatu hari ini?',
+                'type' => 'likert',
+                'choices' => json_encode([
+                    'Tidak langsung – rasa putus harapan',
+                    'Sangat kurang motivasi / tiada minat',
+                    'Biasa sahaja – tidak pasti',
+                    'Ada minat atau keseronokan dalam sesuatu',
+                    'Sangat seronok / bermotivasi sepanjang hari',
+                ]),
+                'field_key' => 'motivation',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 7,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Keperluan Sokongan (Support Need)',
+                'question_text' => 'Adakah anda perlukan sokongan atau seseorang untuk diajak berbual?',
+                'type' => 'likert',
+                'choices' => json_encode([
+                    'Ya, sangat perlukan bantuan segera',
+                    'Ya, perlukan bantuan tetapi tidak mendesak',
+                    'Mungkin perlukan – saya belum pasti',
+                    'Tidak perlu, tapi saya terbuka jika ada yang ingin bantu',
+                    'Tidak, saya okay hari ini',
+                ]),
+                'field_key' => 'support_need',
+                'is_active' => 1,
+                'is_weekly' => 0,
+                'order' => 8,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'domain' => 'Soalan Mingguan (Weekly)',
+                'question_text' => 'Apakah cabaran paling besar yang anda hadapi minggu ini?',
+                'type' => 'text',
+                'choices' => null,
+                'field_key' => 'weekly_challenge',
+                'is_active' => 1,
+                'is_weekly' => 1,
+                'order' => 9,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+    }
+}
+
