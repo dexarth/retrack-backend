@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 
 class HealthMonitoring extends Model
 {
@@ -25,5 +26,15 @@ class HealthMonitoring extends Model
         'risk_zone',
     ];
 
+    protected static function boot()
+{
+    parent::boot();
+
+    static::creating(function ($model) {
+        if (empty($model->uuid)) {
+            $model->uuid = (string) Str::uuid();
+        }
+    });
+}
 
 }

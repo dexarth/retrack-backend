@@ -94,7 +94,7 @@ class HealthQuestionSeeder extends Seeder
                     'Sangat kuat, sukar dikawal',
                 ]),
                 'field_key' => 'craving_score',
-                'is_active' => 1,
+                'is_active' => 0,
                 'is_weekly' => 0,
                 'order' => 5,
                 'created_at' => now(),
