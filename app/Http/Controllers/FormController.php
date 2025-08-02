@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Http\Controllers\NotificationController;
 use App\Models\Laporan;
@@ -80,12 +81,16 @@ class FormController extends Controller
 
         foreach ($files as $field => $value) {
             if ($value instanceof UploadedFile && $value->isValid()) {
-                $paths[$field] = $value->store("uploads/{$table}/{$field}", 'public');
+                $path = $value->store("uploads/{$table}/{$field}", 's3');
+                Storage::disk('s3')->setVisibility($path, 'public'); // ✅ ADD THIS
+                $paths[$field] = $path;
             } elseif (is_array($value)) {
                 $paths[$field] = [];
                 foreach ($value as $file) {
                     if ($file instanceof UploadedFile && $file->isValid()) {
-                        $paths[$field][] = $file->store("uploads/{$table}/{$field}", 'public');
+                        $path = $file->store("uploads/{$table}/{$field}", 's3');
+                        Storage::disk('s3')->setVisibility($path, 'public'); // ✅ ADD THIS
+                        $paths[$field][] = $path;
                     }
                 }
             }
@@ -93,6 +98,7 @@ class FormController extends Controller
 
         return $paths;
     }
+
 
     public function submitForm(Request $request, string $formName)
     {

@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Cookie;
 use App\Models\Admin;
 use App\Models\Mentor;
 use App\Models\Mentee;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
@@ -83,7 +82,7 @@ class UserController extends Controller
 
         if (!Auth::attempt($request->only('email', 'password'))) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['Emel atau kata laluan tidak sah.'],
             ]);
         }
 
@@ -156,7 +155,7 @@ class UserController extends Controller
             'email' => $user->email,
             'name' => $user->name,
             'role' => $user->role,
-            'profile_photo_path' => Storage::url($user->profile_photo_path),
+            'profile_photo_path' => $user->profile_photo_path ? Storage::url($user->profile_photo_path) : null,
             ...($profile ? $profile->toArray() : []),
         ]);
     }
