@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Notifications\GeneralNotification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -26,6 +27,7 @@ class NotificationController extends Controller
             // Build payload with sender info
             $placeholders = [
                 ':id'     => $primary->id,
+                ':user'   => $sender?->name ?? 'Sistem',
                 ':sender' => $sender?->name ?? 'Sistem',
             ];
             $template = json_decode($config->payload_template, true);
@@ -54,6 +56,28 @@ class NotificationController extends Controller
                 'record_id' => $primary->id ?? null,
                 'user_id' => auth()->id(),
             ]);
+        }
+    }
+
+    public function markAsRead(Request $request, $id)
+    {
+        try {
+            $user = auth()->user();
+            $notification = $user->notifications()->where('id', $id)->first();
+
+            if (!$notification) {
+                return response()->json(['message' => 'Not found'], 404);
+            }
+
+            $notification->markAsRead(); // updates read_at column
+
+            return response()->json(['success' => true]);
+        } catch (\Throwable $e) {
+            \Log::error('❌ Error marking notification as read', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['message' => 'Internal server error'], 500);
         }
     }
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\ListingController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\TestNotificationController;
+use App\Http\Controllers\NotificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -61,6 +62,9 @@ Route::middleware('auth:sanctum')->post('/broadcasting/auth', function(){
 
 Route::middleware('auth:sanctum')
     ->post('/test-notification', [TestNotificationController::class,'send']);
+
+Route::middleware('auth:sanctum')->post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+
 
 
 
