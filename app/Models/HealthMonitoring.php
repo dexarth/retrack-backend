@@ -12,6 +12,7 @@ class HealthMonitoring extends Model
 
     protected $fillable = [
         'mentee_id',
+        'date',
         'mood',
         'stress',
         'sleep_quality',

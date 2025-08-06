@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Http\Controllers\NotificationController;
 use App\Models\Laporan;
+use App\Models\HealthMonitoring;
 
 class FormController extends Controller
 {
@@ -102,6 +103,7 @@ class FormController extends Controller
 
     public function submitForm(Request $request, string $formName)
     {
+        //Limitations for laporan mentee forms
         if ($formName === 'laporan-mentee') {
             $menteeId = $request->input('mentee_id')
                 ?? $request->input('laporan_mentee.mentee_id')
@@ -120,6 +122,31 @@ class FormController extends Controller
             }
         }
 
+        //Limitations for health forms
+        if ($formName === 'form-health') {
+            $menteeId = $request->input('mentee_id')
+                ?? auth()->id();
+
+            // Ensure mentee_id is provided and numeric
+            if (!$menteeId || !is_numeric($menteeId)) {
+                return response()->json([
+                    'message' => 'ID mentee tidak dijumpai atau tidak sah.'
+                ], 400);
+            }
+
+            // Prevent multiple submissions per day
+            $alreadySubmitted = HealthMonitoring::where('mentee_id', $menteeId)
+                ->whereDate('created_at', today())
+                ->exists();
+
+            if ($alreadySubmitted) {
+                return response()->json([
+                    'message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan kesihatan sehari.'
+                ], 422);
+            }
+        }
+
+        // Limitations for lapor diri forms
         if ($formName === 'lapor-diri') {
             $tarikh = $request->input('lapordiri.tarikh');
             $masa = $request->input('lapordiri.masa');
