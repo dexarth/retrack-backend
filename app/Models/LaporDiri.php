@@ -15,11 +15,17 @@ class LaporDiri extends Model
         'tarikh',
         'masa',
         'tempat',
+        'mentor_id',
         'mentee_id',
         'status_kehadiran',
     ];
 
     // Relationships
+    public function mentor()
+    {
+        return $this->belongsTo(Mentor::class, 'mentor_id', 'user_id');
+    }
+
     public function mentee()
     {
         return $this->belongsTo(Mentee::class, 'mentee_id', 'user_id');
