@@ -16,11 +16,9 @@ return new class extends Migration
             $table->date('tarikh');
             $table->time('masa');
             $table->string('tempat');
-            $table->unsignedBigInteger('mentor_id');
             $table->unsignedBigInteger('mentee_id');
-            $table->foreign('mentor_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('mentee_id')->references('id')->on('users')->onDelete('cascade');
-            // 0 = tidak hadir, 1 = hadir
+            // 0 = tidak hadir, 1 = hadir, 2="-"(default)
             $table->boolean('status_kehadiran')->nullable();
 
             $table->timestamps();
