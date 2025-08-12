@@ -66,10 +66,12 @@ class ListingController extends Controller
                 $data = $modelClass::with('blog_category.category')->get();
             }else if ($table === 'mentors') {
                 $data = $modelClass::withCount('mentees')->get();
-            }else if ($table === 'lapordiri' || $table === 'laporan') {
-                $data = $modelClass::with(['mentor', 'mentee'])->get();
-            }
-            else {
+            }else if ($table === 'lapordiri' || $table === 'laporan' || $table === 'health_monitorings') {
+                $data = $modelClass::with([
+                        'mentor:user_id,nama_penuh',
+                        'mentee:user_id,id_prospek',
+                    ])->get();
+            }else {
                 $data = $modelClass::all();
             }
             return response()->json(['data' => $data]);

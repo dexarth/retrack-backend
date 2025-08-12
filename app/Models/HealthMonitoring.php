@@ -12,6 +12,7 @@ class HealthMonitoring extends Model
 
     protected $fillable = [
         'mentee_id',
+        'mentor_id',
         'date',
         'mood',
         'stress',
@@ -28,14 +29,25 @@ class HealthMonitoring extends Model
     ];
 
     protected static function boot()
-{
-    parent::boot();
+    {
+        parent::boot();
 
-    static::creating(function ($model) {
-        if (empty($model->uuid)) {
-            $model->uuid = (string) Str::uuid();
-        }
-    });
-}
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+    }
+
+    // Relationships
+    public function mentor()
+    {
+        return $this->belongsTo(Mentor::class, 'mentor_id', 'user_id');
+    }
+
+    public function mentee()
+    {
+        return $this->belongsTo(Mentee::class, 'mentee_id', 'user_id');
+    }
 
 }
