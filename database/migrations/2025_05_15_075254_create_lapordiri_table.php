@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('lapordiri', function (Blueprint $table) {
             $table->id();
-            $table->date('tarikh');
-            $table->time('masa');
+            $table->datetime('lapor_diri_data');
             $table->string('tempat');
             $table->unsignedBigInteger('mentor_id');
             $table->unsignedBigInteger('mentee_id');

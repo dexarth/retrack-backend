@@ -12,12 +12,11 @@ class LaporDiri extends Model
     protected $table = 'lapordiri'; // explicitly define the table name
 
     protected $fillable = [
-        'tarikh',
-        'masa',
         'tempat',
         'mentor_id',
         'mentee_id',
         'status_kehadiran',
+        'lapor_diri_pada',
     ];
 
     // Relationships
