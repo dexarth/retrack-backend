@@ -222,17 +222,56 @@ class ListingController extends Controller
             return response()->json(['error' => 'Model not found.'], 404);
         }
 
-        // Start building query
+        // Start query
         $query = $modelClass::query();
 
-        // Automatically eager load allowed relationships from query ?with[]=mentee&with[]=mentor
-        if ($request->has('with')) {
-            foreach ((array) $request->get('with') as $relation) {
-                if (method_exists($modelClass, $relation)) {
-                    $query->with($relation);
-                }
+        // Allowlist per table (security)
+        $allowedWith = [
+        'laporan' => ['mentor', 'mentee'],
+        'lapordiri' => ['mentor', 'mentee'],
+        'health_monitorings' => ['mentor', 'mentee'],
+        'blogs' => ['blog_category'],
+        'mentors' => ['mentees'],
+        ];
+
+        // Parse ?with[]=mentee:user_id,id_prospek&with[]=mentor:user_id,nama_penuh
+        $withReq = (array) $request->query('with', []);
+        $with = [];
+
+        foreach ($withReq as $item) {
+            [$name, $cols] = array_pad(explode(':', $item, 2), 2, null);
+
+            // security: only allow known relations for this table
+            if (!in_array($name, $allowedWith[$table] ?? [], true)) continue;
+            if (!method_exists($modelClass, $name)) continue;
+
+            if ($cols) {
+                $columns = array_filter(array_map('trim', explode(',', $cols)));
+
+                // ensure owner/primary key is selected for belongsTo/hasOne
+                $rel     = (new $modelClass)->{$name}();
+                $related = $rel->getRelated();
+                $ownerKey = method_exists($rel, 'getOwnerKeyName')
+                    ? $rel->getOwnerKeyName()
+                    : $related->getKeyName(); // fallback to related PK
+
+                if (!in_array($ownerKey, $columns, true)) $columns[] = $ownerKey;
+
+                $with[$name] = function ($q) use ($columns) {
+                    $q->select($columns);
+                };
+            } else {
+                $with[] = $name;
             }
         }
+
+        // If none requested, keep your sensible defaults
+        if (empty($with) && in_array($table, ['lapordiri','laporan','health_monitorings'], true)) {
+            $with = ['mentor', 'mentee'];
+        }
+
+        if (!empty($with)) $query->with($with);
+
 
         // Apply filters: ?filters[column]=value
         $filters = $request->get('filters', []);
