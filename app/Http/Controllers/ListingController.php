@@ -56,24 +56,55 @@ class ListingController extends Controller
 
         // Resolve model class
         $modelClass = $this->resolveModelFromTable($table);
-
         if (!$modelClass || !class_exists($modelClass)) {
             return response()->json(['error' => 'Model not found for this table.'], 404);
         }
 
         try {
-            if ($table === 'blogs') {
-                $data = $modelClass::with('blog_category.category')->get();
-            }else if ($table === 'mentors') {
-                $data = $modelClass::withCount('mentees')->get();
-            }else if ($table === 'lapordiri' || $table === 'laporan' || $table === 'health_monitorings') {
-                $data = $modelClass::with([
-                        'mentor:user_id,nama_penuh',
-                        'mentee:user_id,id_prospek',
-                    ])->get();
-            }else {
-                $data = $modelClass::all();
+            $model     = new $modelClass;
+            $pk        = $model->getKeyName();
+            $allCols   = Schema::getColumnListing($table); // from DB schema
+            $requested = $request->query('columns');       // e.g. "id,nama_penuh,email"
+
+            // 3) Validate & sanitize requested columns (optional)
+            $selectCols = null;
+            if ($requested) {
+                $req = array_filter(array_map('trim', explode(',', $requested)));
+                // Keep only columns that exist
+                $safe = array_values(array_intersect($req, $allCols));
+                // Ensure primary key is included for withCount/relations to work
+                if (!in_array($pk, $safe, true)) {
+                    $safe[] = $pk;
+                }
+                // If nothing valid requested, fall back to all columns
+                if (count($safe)) {
+                    $selectCols = $safe;
+                }
             }
+
+            // 4) Build query + relations
+            $query = $modelClass::query();
+
+            // Relations per table (keep your existing behavior)
+            if ($table === 'blogs') {
+                $query->with('blog_category.category');
+            } elseif ($table === 'mentors') {
+                $query->withCount('mentees');
+            } elseif (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
+                // Limit relation columns explicitly
+                $query->with([
+                    'mentor:user_id,nama_penuh',
+                    'mentee:user_id,id_prospek',
+                ]);
+            }
+
+            // 5) Apply select if requested
+            if ($selectCols) {
+                $query->select($selectCols);
+            }
+
+            $data = $query->get();
+
             return response()->json(['data' => $data]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error fetching data: ' . $e->getMessage()], 500);
@@ -117,23 +148,50 @@ class ListingController extends Controller
      */
     public function getListingWithFilter(Request $request, $table)
     {
+        // Whitelist tables
         $allowed = DB::table('allowed_tables')->where('read', true)->pluck('table_name')->toArray();
-        if (!in_array($table, $allowed)) {
-            return response()->json(['error'=>'Table not allowed.'], 403);
+        if (!in_array($table, $allowed, true)) {
+            return response()->json(['error' => 'Table not allowed.'], 403);
         }
 
+        // Resolve model
         $modelClass = $this->resolveModelFromTable($table);
         if (!$modelClass || !class_exists($modelClass)) {
-            return response()->json(['error'=>'Model not found.'], 404);
+            return response()->json(['error' => 'Model not found.'], 404);
         }
+
+        $model       = new $modelClass;
+        $tableName   = $model->getTable();
+        $allCols     = Schema::getColumnListing($tableName);
+        $primaryKey  = $model->getKeyName();
 
         $query = $modelClass::query();
 
-        // grab only the filters[...] query parameters
-        $filters = $request->get('filters', []);
+        // ---- Columns: ?columns=id,nama_penuh ----
+        $requested = $request->query('columns'); // string or null
+        if ($requested) {
+            $reqCols = array_values(array_filter(array_map('trim', explode(',', $requested))));
+            // keep only valid columns
+            $safeCols = array_values(array_intersect($reqCols, $allCols));
+            // always ensure PK present (helps with relations/future ops)
+            if (!in_array($primaryKey, $safeCols, true)) {
+                $safeCols[] = $primaryKey;
+            }
+            if ($safeCols) {
+                $query->select($safeCols);
+            }
+        }
+
+        // ---- Filters: filters[col]=val or filters[col][]=a&filters[col][]=b ----
+        $filters = (array) $request->get('filters', []);
         foreach ($filters as $column => $value) {
-            // optionally: guard against invalid columns
-            if (Schema::hasColumn((new $modelClass)->getTable(), $column)) {
+            if (!in_array($column, $allCols, true)) {
+                continue; // ignore unknown columns
+            }
+            if (is_array($value)) {
+                // supports whereIn for multi-values
+                $query->whereIn($column, $value);
+            } else {
                 $query->where($column, $value);
             }
         }
