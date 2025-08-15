@@ -148,14 +148,12 @@ class FormController extends Controller
 
         // Limitations for lapor diri forms
         if ($formName === 'lapor-diri') {
-            $tarikh = $request->input('lapordiri.tarikh');
-            $masa = $request->input('lapordiri.masa');
+            $lapor_diri_pada = $request->input('lapor_diri_pada');
             $tempat = $request->input('lapordiri.tempat');
 
             $exists = DB::table('lapordiri')
                 ->where('tempat', $tempat)
-                ->where('tarikh', $tarikh)
-                ->where('masa', $masa)
+                ->where('lapor_diri_pada', $lapor_diri_pada)
                 ->exists();
 
             if ($exists) {
