@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')
 
 Route::middleware('auth:sanctum')->post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 
+Route::middleware('auth:sanctum')->get('/notifications-feed', [NotificationController::class, 'index']);
 
 
 

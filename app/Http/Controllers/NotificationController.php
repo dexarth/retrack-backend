@@ -9,6 +9,45 @@ use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
+    public function index(Request $request)
+    {
+        $per  = (int) $request->query('per_page', 10);
+        $page = (int) $request->query('page', 1);
+
+        $paginator = $request->user()
+            ->notifications()
+            ->latest()
+            ->simplePaginate($per, ['*'], 'page', $page);
+
+        $items = collect($paginator->items())
+            ->map(fn (\Illuminate\Notifications\DatabaseNotification $n) => $this->mapNotif($n))
+            ->values();
+
+        return response()->json([
+            'data' => $items,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page'     => $per,
+                'has_more'     => $paginator->hasMorePages(),
+            ],
+        ]);
+    }
+
+    private function mapNotif(\Illuminate\Notifications\DatabaseNotification $n): array
+    {
+        $d = is_array($n->data) ? $n->data : (array) $n->data;
+
+        return [
+            'id'         => $n->id,
+            'title'      => $d['title'] ?? 'Notifikasi',
+            'body'       => $d['body'] ?? ($d['message'] ?? ''),
+            'actor_name' => $d['actor_name'] ?? null,
+            'url'       => $d['url'] ?? null,
+            'created_at' => optional($n->created_at)->toISOString(),
+            'read_at'    => optional($n->read_at)->toISOString(),
+        ];
+    }
+
     public static function trigger(string $tableName, $primary): void
     {
         try {
