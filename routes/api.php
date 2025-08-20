@@ -7,9 +7,10 @@ use App\Http\Controllers\WeatherController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\FormController;
-use App\Http\Controllers\ImageController;
 use App\Http\Controllers\TestNotificationController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\GeoController;
+use App\Http\Controllers\GeoControllerNominatim;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -67,6 +68,8 @@ Route::middleware('auth:sanctum')->post('/notifications/{id}/read', [Notificatio
 
 Route::middleware('auth:sanctum')->get('/notifications-feed', [NotificationController::class, 'index']);
 
+Route::middleware('auth:sanctum')->get('/reverse-geocode', [GeoController::class, 'reverse']);
 
+Route::middleware('auth:sanctum')->get('/forward-geocode', [GeoController::class, 'forward']);
 
 
