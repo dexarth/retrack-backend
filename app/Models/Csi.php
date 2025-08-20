@@ -13,5 +13,6 @@ class Csi extends Model
         'syarikat_lat',
         'syarikat_long',
         'alamat_syarikat',
+        'huraian_alamat',
     ];
 }

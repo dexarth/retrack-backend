@@ -17,6 +17,7 @@ return new class extends Migration
             $table->decimal('syarikat_lat', 10, 7)->nullable();
             $table->decimal('syarikat_long', 10, 7)->nullable();
             $table->text('alamat_syarikat')->nullable();
+            $table->text('huraian_alamat')->nullable();
             $table->timestamps();
         });
     }
