@@ -15,7 +15,7 @@ return new class extends Migration
             $table->enum('kategori', ['individu', 'kelompok']);
 
             // individu => prospek (user/mentee), kelompok => csi
-            $table->foreignId('prospek_id')->nullable()->constrained('users')->restrictOnDelete();
+            $table->foreignId('mentee_id')->nullable()->constrained('users')->restrictOnDelete();
             $table->foreignId('csi_id')->nullable()->constrained('csi')->restrictOnDelete();
 
             // Alamat Baru

@@ -13,10 +13,11 @@ class StaffMonitoring extends Model
 
     protected $fillable = [
         'kategori',
-        'prospek_id',
+        'mentee_id',
         'csi_id',
         'rt_no',
         'alamat_baru',
+        'huraian_alamat',
         'baru_lat',
         'baru_long',
         'laporan_pemantauan',
@@ -25,9 +26,9 @@ class StaffMonitoring extends Model
     ];
 
     // Relationships
-    public function prospek()
+    public function mentee()
     {
-        return $this->belongsTo(User::class, 'prospek_id'); // individu (mentee)
+        return $this->belongsTo(Mentee::class, 'mentee_id', 'user_id'); // individu (mentee)
     }
 
     public function csi()
@@ -37,6 +38,6 @@ class StaffMonitoring extends Model
 
     public function mentor()
     {
-        return $this->belongsTo(User::class, 'mentor_id'); // mentor user
+        return $this->belongsTo(Mentor::class, 'mentor_id', 'user_id'); // mentor user
     }
 }
