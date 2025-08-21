@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('jantina', ['L', 'P'])->nullable();
             $table->string('no_tel')->nullable();
             $table->string('alamat_rumah')->nullable();
+            $table->text('huraian_alamat')->nullable();
             $table->decimal('rumah_lat', 10, 7)->nullable();   // Latitude
             $table->decimal('rumah_long', 10, 7)->nullable();  // Longitude
             $table->date('tarikh_bebas')->nullable();

@@ -20,6 +20,7 @@ return new class extends Migration
 
             // Alamat Baru
             $table->text('alamat_baru')->nullable();
+            $table->text('huraian_alamat')->nullable();
             $table->decimal('baru_lat', 10, 7)->nullable();
             $table->decimal('baru_long', 10, 7)->nullable();
 

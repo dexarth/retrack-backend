@@ -18,6 +18,7 @@ class Mentee extends Model
         'jantina',
         'no_tel',
         'alamat_rumah',
+        'huraian_alamat',
         'rumah_lat',
         'rumah_long',
         'tarikh_bebas',
