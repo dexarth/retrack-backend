@@ -40,4 +40,9 @@ class StaffMonitoring extends Model
     {
         return $this->belongsTo(Mentor::class, 'mentor_id', 'user_id'); // mentor user
     }
+
+    public function user()   
+    { 
+        return $this->belongsTo(User::class, 'user_id'); 
+    }
 }

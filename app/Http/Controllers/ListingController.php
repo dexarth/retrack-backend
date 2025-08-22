@@ -95,14 +95,18 @@ class ListingController extends Controller
             } elseif (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
                 // Limit relation columns explicitly
                 $query->with([
-                    'mentor:user_id,nama_penuh',
+                    'user:id,name',
+                    'mentor.user:id,name',
                     'mentee:user_id,id_prospek',
+                    'mentee.user:id,name',
                 ]);
             } elseif (in_array($table, ['staff_monitorings'], true)) {
                 // Limit relation columns explicitly
                 $query->with([
-                    'mentor:user_id,nama_penuh',
+                    'user:id,name',
+                    'mentor.user:id,name',
                     'mentee:user_id,id_prospek,huraian_alamat,alamat_rumah',
+                    'mentee.user:id,name',
                     'csi:id,nama_syarikat,huraian_alamat,alamat_syarikat'
                 ]);
             }

@@ -38,4 +38,9 @@ class Laporan extends Model
     {
         return $this->belongsTo(Mentee::class, 'mentee_id', 'user_id');
     }
+
+    public function user()   
+    { 
+        return $this->belongsTo(User::class, 'user_id'); 
+    }
 }

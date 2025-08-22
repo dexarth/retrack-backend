@@ -33,9 +33,9 @@ class Mentee extends Model
     /**
      * Relationship to the user who is this mentee.
      */
-    public function user()
-    {
-        return $this->belongsTo(User::class);
+    public function user()   
+    { 
+        return $this->belongsTo(User::class, 'user_id'); 
     }
 
     /**
