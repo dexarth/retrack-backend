@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('mentors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('restrict');
-            $table->string('nama_penuh')->nullable();
             $table->string('pangkat')->nullable();
             $table->enum('parol_daerah', ['SANDAKAN', 'TAWAU', 'BEAUFORT', 'KUDAT', 'PANTAI BARAT', 'PEDALAMAN'])->nullable();
             $table->timestamps();

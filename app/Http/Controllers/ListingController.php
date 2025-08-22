@@ -89,7 +89,9 @@ class ListingController extends Controller
             if ($table === 'blogs') {
                 $query->with('blog_category.category');
             } elseif ($table === 'mentors') {
-                $query->withCount('mentees');
+                $query->withCount('mentees')->with(['user:id,name']);
+            } elseif ($table === 'admins') {
+                $query->with(['user:id,name']);
             } elseif (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
                 // Limit relation columns explicitly
                 $query->with([
