@@ -90,11 +90,18 @@ class ListingController extends Controller
                 $query->with('blog_category.category');
             } elseif ($table === 'mentors') {
                 $query->withCount('mentees');
-            } elseif (in_array($table, ['staff_monitorings', 'lapordiri', 'laporan', 'health_monitorings'], true)) {
+            } elseif (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
                 // Limit relation columns explicitly
                 $query->with([
                     'mentor:user_id,nama_penuh',
                     'mentee:user_id,id_prospek',
+                ]);
+            } elseif (in_array($table, ['staff_monitorings'], true)) {
+                // Limit relation columns explicitly
+                $query->with([
+                    'mentor:user_id,nama_penuh',
+                    'mentee:user_id,id_prospek,huraian_alamat,alamat_rumah',
+                    'csi:id,nama_syarikat,huraian_alamat,alamat_syarikat'
                 ]);
             }
 
