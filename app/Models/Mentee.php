@@ -12,7 +12,6 @@ class Mentee extends Model
 
     protected $fillable = [
         'user_id',
-        'nama_penuh',
         'id_prospek',
         'daerah',
         'jantina',
