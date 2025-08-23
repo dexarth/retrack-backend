@@ -90,7 +90,7 @@ class ListingController extends Controller
                 $query->with('blog_category.category');
             } elseif ($table === 'mentors') {
                 $query->withCount('mentees')->with(['user:id,name']);
-            } elseif ($table === 'admins') {
+            } elseif (in_array($table, ['admins', 'mentees'], true)) {
                 $query->with(['user:id,name']);
             } elseif (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
                 // Limit relation columns explicitly
@@ -301,7 +301,7 @@ class ListingController extends Controller
         'laporan' => ['mentor', 'mentee'],
         'lapordiri' => ['mentor', 'mentee'],
         'health_monitorings' => ['mentor', 'mentee'],
-        'staff_monitorings' => ['mentor', 'mentee'],
+        'staff_monitorings' => ['mentor', 'mentee','csi'],
         'blogs' => ['blog_category'],
         'mentors' => ['mentees'],
         ];
