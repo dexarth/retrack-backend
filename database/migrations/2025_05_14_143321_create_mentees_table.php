@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('mentees', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('restrict');
-            $table->string('id_prospek')->nullable();
+            $table->string('id_prospek')->unique();
             $table->string('daerah')->nullable();
             $table->enum('jantina', ['L', 'P'])->nullable();
             $table->string('no_tel')->nullable();

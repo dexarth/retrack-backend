@@ -44,17 +44,17 @@ class ListingController extends Controller
      */
     public function getListing(Request $request, $table)
     {
-        // Whitelisted tables from DB based on 'read' permission
+        // 1) Table whitelist
         $allowedTables = DB::table('allowed_tables')
             ->where('read', true)
             ->pluck('table_name')
             ->toArray();
 
-        if (!in_array($table, $allowedTables)) {
+        if (!in_array($table, $allowedTables, true)) {
             return response()->json(['error' => 'Table not allowed.'], 403);
         }
 
-        // Resolve model class
+        // 2) Resolve model
         $modelClass = $this->resolveModelFromTable($table);
         if (!$modelClass || !class_exists($modelClass)) {
             return response()->json(['error' => 'Model not found for this table.'], 404);
@@ -63,29 +63,21 @@ class ListingController extends Controller
         try {
             $model     = new $modelClass;
             $pk        = $model->getKeyName();
-            $allCols   = Schema::getColumnListing($table); // from DB schema
+            $allCols   = Schema::getColumnListing($table); // actual DB columns
             $requested = $request->query('columns');       // e.g. "id,nama_penuh,email"
 
-            // 3) Validate & sanitize requested columns (optional)
+            // 3) Sanitize requested columns
             $selectCols = null;
             if ($requested) {
-                $req = array_filter(array_map('trim', explode(',', $requested)));
-                // Keep only columns that exist
+                $req  = array_filter(array_map('trim', explode(',', $requested)));
                 $safe = array_values(array_intersect($req, $allCols));
-                // Ensure primary key is included for withCount/relations to work
-                if (!in_array($pk, $safe, true)) {
-                    $safe[] = $pk;
-                }
-                // If nothing valid requested, fall back to all columns
-                if (count($safe)) {
-                    $selectCols = $safe;
-                }
+                if (!in_array($pk, $safe, true)) $safe[] = $pk;
+                if (count($safe)) $selectCols = $safe;
             }
 
             // 4) Build query + relations
             $query = $modelClass::query();
 
-            // Relations per table (keep your existing behavior)
             if ($table === 'blogs') {
                 $query->with('blog_category.category');
             } elseif ($table === 'mentors') {
@@ -93,7 +85,6 @@ class ListingController extends Controller
             } elseif (in_array($table, ['admins', 'mentees'], true)) {
                 $query->with(['user:id,name']);
             } elseif (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
-                // Limit relation columns explicitly
                 $query->with([
                     'user:id,name',
                     'mentor.user:id,name',
@@ -101,7 +92,6 @@ class ListingController extends Controller
                     'mentee.user:id,name',
                 ]);
             } elseif (in_array($table, ['staff_monitorings'], true)) {
-                // Limit relation columns explicitly
                 $query->with([
                     'user:id,name',
                     'mentor.user:id,name',
@@ -111,13 +101,22 @@ class ListingController extends Controller
                 ]);
             }
 
-            // 5) Apply select if requested
-            if ($selectCols) {
-                $query->select($selectCols);
+            // 5) Apply select
+            if ($selectCols) $query->select($selectCols);
+
+            // 6) Safe ORDER BY
+            $orderBy  = $request->query('order_by');              // column name
+            $orderDir = strtolower($request->query('order_dir', 'asc')); // asc|desc
+
+            if ($orderBy && in_array($orderBy, $allCols, true)) {
+                if (!in_array($orderDir, ['asc','desc'], true)) $orderDir = 'asc';
+                $query->orderBy($orderBy, $orderDir);
+            } else {
+                // Sensible default (optional)
+                $query->orderBy($pk, 'desc');
             }
 
             $data = $query->get();
-
             return response()->json(['data' => $data]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error fetching data: ' . $e->getMessage()], 500);
