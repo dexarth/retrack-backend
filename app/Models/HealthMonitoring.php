@@ -50,9 +50,15 @@ class HealthMonitoring extends Model
         return $this->belongsTo(Mentee::class, 'mentee_id', 'user_id');
     }
 
-    public function user()   
-    { 
-        return $this->belongsTo(User::class, 'user_id'); 
+    public function menteeAccount()
+    {
+        // mentee_id stores the users.id of the mentee
+        return $this->belongsTo(User::class, 'mentee_id', 'id');
+    }
+
+    public function mentorAccount()
+    {
+        return $this->belongsTo(User::class, 'mentor_id', 'id');
     }
 
 }

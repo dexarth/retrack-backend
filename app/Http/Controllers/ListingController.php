@@ -299,7 +299,7 @@ class ListingController extends Controller
         $allowedWith = [
         'laporan' => ['mentor', 'mentee'],
         'lapordiri' => ['mentor', 'mentee'],
-        'health_monitorings' => ['mentor', 'mentee'],
+        'health_monitorings' => ['mentor', 'mentee','menteeAccount'],
         'staff_monitorings' => ['mentor', 'mentee','csi'],
         'blogs' => ['blog_category'],
         'mentors' => ['mentees'],
@@ -338,7 +338,7 @@ class ListingController extends Controller
 
         // If none requested, keep your sensible defaults
         if (empty($with) && in_array($table, ['lapordiri','laporan','health_monitorings','staff_monitorings'], true)) {
-            $with = ['mentor', 'mentee'];
+            $with = ['mentor', 'mentee','menteeAccount'];
         }
 
         if (!empty($with)) $query->with($with);
