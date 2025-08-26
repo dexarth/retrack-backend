@@ -472,8 +472,7 @@ class FormController extends Controller
             }
 
             // (B) one per mentee per date
-            $menteeExists = DB::table('lapordiri')
-                ->where('mentee_id', $menteeId)
+            $menteeExists = LaporDiri::where('mentee_id', $menteeId)
                 ->whereDate('lapor_diri_pada', $dateOnly)
                 ->when($routeId, fn($q) => $q->where('id','!=',$routeId))
                 //->whereNull('deleted_at')
