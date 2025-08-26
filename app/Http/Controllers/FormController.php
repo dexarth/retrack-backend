@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use App\Http\Controllers\NotificationController;
 use App\Models\Laporan;
 use App\Models\HealthMonitoring;
+use App\Models\LaporDiri;
 
 class FormController extends Controller
 {
@@ -103,65 +104,7 @@ class FormController extends Controller
 
     public function submitForm(Request $request, string $formName)
     {
-        //Limitations for laporan mentee forms
-        if ($formName === 'laporan-mentee') {
-            $menteeId = $request->input('mentee_id')
-                ?? $request->input('laporan_mentee.mentee_id')
-                ?? auth()->id();
-
-            if (!$menteeId) {
-                return response()->json(['message' => 'ID mentee tidak dijumpai.'], 400);
-            }
-
-            $exists = Laporan::where('mentee_id', $menteeId)
-                ->whereDate('created_at', today())
-                ->exists();
-
-            if ($exists) {
-                return response()->json(['message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan sehari.'], 422);
-            }
-        }
-
-        //Limitations for health forms
-        if ($formName === 'form-health') {
-            $menteeId = $request->input('mentee_id')
-                ?? auth()->id();
-
-            // Ensure mentee_id is provided and numeric
-            if (!$menteeId || !is_numeric($menteeId)) {
-                return response()->json([
-                    'message' => 'ID mentee tidak dijumpai atau tidak sah.'
-                ], 400);
-            }
-
-            // Prevent multiple submissions per day
-            $alreadySubmitted = HealthMonitoring::where('mentee_id', $menteeId)
-                ->whereDate('created_at', today())
-                ->exists();
-
-            if ($alreadySubmitted) {
-                return response()->json([
-                    'message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan kesihatan sehari.'
-                ], 422);
-            }
-        }
-
-        // Limitations for lapor diri forms
-        if ($formName === 'lapor-diri') {
-            $lapor_diri_pada = $request->input('lapor_diri_pada');
-            $tempat = $request->input('lapordiri.tempat');
-
-            $exists = DB::table('lapordiri')
-                ->where('tempat', $tempat)
-                ->where('lapor_diri_pada', $lapor_diri_pada)
-                ->exists();
-
-            if ($exists) {
-                return response()->json([
-                    'message' => 'Sila pilih slot yang lain. Lokasi bagi tarikh dan masa tersebut tidak tersedia.'
-                ], 422);
-            }
-        }
+        $this->validateFormLimitations($formName, $request);
 
         $relation = DB::table('table_relations')->where('form_name', $formName)->first();
 
@@ -302,6 +245,8 @@ class FormController extends Controller
      */
     public function updateForm(Request $request, string $formName, int $routeId)
     {
+        $this->validateFormLimitations($formName, $request, $routeId); 
+
         $relationConfig = DB::table('table_relations')->where('form_name', $formName)->get();
 
         if ($relationConfig->isEmpty()) {
@@ -437,6 +382,109 @@ class FormController extends Controller
         $modelClass = "App\\Models\\$singular";
 
         return class_exists($modelClass) ? $modelClass : null;
+    }
+
+    // In your FormController
+
+    /**
+     * Validate business rules for specific forms.
+     * Will throw a JSON response if invalid.
+     */
+    private function validateFormLimitations(string $formName, Request $request, ?int $routeId = null)
+    {
+        // === Laporan Mentee ===
+        if ($formName === 'laporan-mentee') {
+            $menteeId = data_get($request->all(), 'mentee_id')
+                ?? data_get($request->all(), 'laporan_mentee.mentee_id')
+                ?? auth()->id();
+
+            if (!$menteeId || !is_numeric($menteeId)) {
+                abort(response()->json(['message' => 'ID mentee tidak dijumpai atau tidak sah.'], 400));
+            }
+
+            $exists = Laporan::where('mentee_id', $menteeId)
+                ->whereDate('created_at', now()->toDateString())
+                ->when($routeId, fn($q) => $q->where('id','!=',$routeId))
+                //->whereNull('deleted_at')
+                ->exists();
+
+            if ($exists) {
+                abort(response()->json(['message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan sehari.'], 422));
+            }
+        }
+
+        // === Health Monitoring ===
+        if ($formName === 'form-health') {
+            $menteeId = data_get($request->all(), 'mentee_id')
+                ?? data_get($request->all(), 'health.mentee_id')
+                ?? auth()->id();
+
+            if (!$menteeId || !is_numeric($menteeId)) {
+                abort(response()->json(['message' => 'ID mentee tidak dijumpai atau tidak sah.'], 400));
+            }
+
+            $exists = HealthMonitoring::where('mentee_id', $menteeId)
+                ->whereDate('created_at', now()->toDateString())
+                ->when($routeId, fn($q) => $q->where('id','!=',$routeId))
+                //->whereNull('deleted_at')
+                ->exists();
+
+            if ($exists) {
+                abort(response()->json(['message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan kesihatan sehari.'], 422));
+            }
+        }
+
+        // === Lapor Diri ===
+        if ($formName === 'lapor-diri') {
+            $payload   = (array) $request->input('lapordiri', []);
+            $tempat    = data_get($payload, 'tempat');
+            $menteeId  = data_get($payload, 'mentee_id');
+            $laporRaw  = trim((string) data_get($payload, 'lapor_diri_pada', ''));
+
+            if (!$tempat || !$menteeId || $laporRaw === '') {
+                abort(response()->json(['message' => 'Data tidak lengkap untuk Lapor Diri.'], 400));
+            }
+
+            try {
+                $raw = $laporRaw;
+                if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $raw)) $raw = str_replace('T',' ',$raw).':00';
+                if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $raw))  $raw .= ':00';
+                $dt = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $raw);
+                if ($dt === false) throw new \Exception('Bad datetime');
+            } catch (\Throwable $e) {
+                abort(response()->json(['message' => 'Tarikh & Masa Lapor Diri tidak sah.'], 422));
+            }
+
+            $dateOnly = $dt->toDateString();
+            $sqlDate  = $dt->format('Y-m-d H:i:s');
+
+            // (A) tempat + exact datetime
+            $existsSlot = LaporDiri::where('tempat', $tempat)
+                ->where('lapor_diri_pada', $sqlDate)
+                ->when($routeId, fn($q) => $q->where('id','!=',$routeId))
+                //->whereNull('deleted_at')
+                ->exists();
+
+            if ($existsSlot) {
+                abort(response()->json([
+                    'message' => 'Sila pilih slot lain. Tarikh dan masa tersebut tidak tersedia di tempat tersebut.'
+                ], 422));
+            }
+
+            // (B) one per mentee per date
+            $menteeExists = DB::table('lapordiri')
+                ->where('mentee_id', $menteeId)
+                ->whereDate('lapor_diri_pada', $dateOnly)
+                ->when($routeId, fn($q) => $q->where('id','!=',$routeId))
+                //->whereNull('deleted_at')
+                ->exists();
+
+            if ($menteeExists) {
+                abort(response()->json([
+                    'message' => 'Mentee telah mempunyai rekod Lapor Diri pada tarikh ini. Sila kemas kini rekod Lapor Diri yang sedia ada.'
+                ], 422));
+            }
+        }
     }
 
 }
