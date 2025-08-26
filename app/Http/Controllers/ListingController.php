@@ -280,96 +280,91 @@ class ListingController extends Controller
      */
     public function getListingJoinFilter(Request $request, $table)
     {
-        // Reuse the allowed table check
         $allowed = DB::table('allowed_tables')->where('read', true)->pluck('table_name')->toArray();
-        if (!in_array($table, $allowed)) {
-            return response()->json(['error' => 'Table not allowed.'], 403);
-        }
+        if (!in_array($table, $allowed)) return response()->json(['error' => 'Table not allowed.'], 403);
 
-        // Resolve model
         $modelClass = $this->resolveModelFromTable($table);
-        if (!$modelClass || !class_exists($modelClass)) {
-            return response()->json(['error' => 'Model not found.'], 404);
-        }
+        if (!$modelClass || !class_exists($modelClass)) return response()->json(['error' => 'Model not found.'], 404);
 
-        // Start query
         $query = $modelClass::query();
 
-        // Allowlist per table (security)
+        // allowlist relations (use singular names that match your model methods)
         $allowedWith = [
-        'laporan' => ['mentor', 'mentee'],
-        'lapordiri' => ['mentor', 'mentee'],
-        'health_monitorings' => ['mentor', 'mentee','menteeAccount'],
-        'staff_monitorings' => ['mentor', 'mentee','csi'],
-        'blogs' => ['blog_category'],
-        'mentors' => ['mentees'],
+            'laporan'            => ['mentor','mentee'],
+            'lapordiri'          => ['mentor','mentee'],
+            'health_monitorings' => ['mentor','mentee','menteeAccount'],
+            'staff_monitorings'  => ['mentor','mentee','csi'],
+            'blogs'              => ['blog_category'],
+            'mentors'            => ['user'],
+            'mentees'            => ['mentor','user'], // ✅ singular 'mentor'
         ];
 
-        // Parse ?with[]=mentee:user_id,id_prospek&with[]=mentor:user_id,nama_penuh
+        // parse ?with[]=mentor:user_id,parol_daerah&with[]=user:id,name
         $withReq = (array) $request->query('with', []);
         $with = [];
-
         foreach ($withReq as $item) {
             [$name, $cols] = array_pad(explode(':', $item, 2), 2, null);
-
-            // security: only allow known relations for this table
             if (!in_array($name, $allowedWith[$table] ?? [], true)) continue;
             if (!method_exists($modelClass, $name)) continue;
 
             if ($cols) {
                 $columns = array_filter(array_map('trim', explode(',', $cols)));
-
-                // ensure owner/primary key is selected for belongsTo/hasOne
-                $rel     = (new $modelClass)->{$name}();
-                $related = $rel->getRelated();
-                $ownerKey = method_exists($rel, 'getOwnerKeyName')
-                    ? $rel->getOwnerKeyName()
-                    : $related->getKeyName(); // fallback to related PK
-
+                $rel      = (new $modelClass)->{$name}();
+                $related  = $rel->getRelated();
+                $ownerKey = method_exists($rel, 'getOwnerKeyName') ? $rel->getOwnerKeyName() : $related->getKeyName();
                 if (!in_array($ownerKey, $columns, true)) $columns[] = $ownerKey;
 
-                $with[$name] = function ($q) use ($columns) {
-                    $q->select($columns);
-                };
+                // (optional) drop non-existent columns to avoid SQL 42S22
+                $safe = array_values(array_unique(array_filter($columns, fn($c) => Schema::hasColumn($related->getTable(), $c))));
+                $with[$name] = fn($q) => $q->select($safe ?: ['*']);
             } else {
                 $with[] = $name;
             }
         }
 
-        // If none requested, keep your sensible defaults
         if (empty($with) && in_array($table, ['lapordiri','laporan','health_monitorings','staff_monitorings'], true)) {
-            $with = ['mentor', 'mentee','menteeAccount'];
+            $with = ['mentor','mentee','menteeAccount'];
         }
 
+        if ($table === 'mentors') {
+            $query->withCount('mentees'); // ✅ expose mentees_count
+        }
         if (!empty($with)) $query->with($with);
 
-
-        // Apply filters: ?filters[column]=value
-        $filters = $request->get('filters', []);
-        Log::info("filter:", $filters);
+        // filters: support base columns AND relation.dot columns
+        $filters = $request->input('filters', []);
         foreach ($filters as $column => $value) {
-            Log::info("Applying filter:", ['column' => $column, 'value' => $value]);
-            if (Schema::hasColumn((new $modelClass)->getTable(), $column)) {
-                $query->where($column, $value);
+            if (strpos($column, '.') !== false) {
+                // relation filter, e.g. mentor.parol_daerah
+                [$rel, $col] = explode('.', $column, 2);
+                if (in_array($rel, $allowedWith[$table] ?? [], true) && method_exists($modelClass, $rel)) {
+                    $query->whereHas($rel, function($q) use ($col, $value) {
+                        if (is_array($value) && array_key_first($value) === 'in') {
+                            $q->whereIn($col, $value['in']);
+                        } elseif (is_string($value) && str_starts_with($value, 'like:')) {
+                            $q->where($col, 'like', substr($value, 5));
+                        } elseif (is_string($value) && str_starts_with($value, '!=')) {
+                            $q->where($col, '!=', substr($value, 2));
+                        } else {
+                            $q->where($col, $value);
+                        }
+                    });
+                }
+            } else {
+                if (Schema::hasColumn((new $modelClass)->getTable(), $column)) {
+                    $query->where($column, $value);
+                }
             }
         }
 
-        // ——— NEW: date‐range on updated_at ———
-        if ($request->filled('from')) {
-            $query->whereDate('updated_at', '>=', $request->input('from'));
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('updated_at', '<=', $request->input('to'));
-        }
-        // ————————————————————————————————
-
-        // Sorting: ?sort=created_at&order=desc
-        if ($request->filled('sort')) {
-            $query->orderBy($request->get('sort'), $request->get('order', 'asc'));
-        }
+        // optional date range + sort
+        if ($request->filled('from')) $query->whereDate('updated_at', '>=', $request->input('from'));
+        if ($request->filled('to'))   $query->whereDate('updated_at', '<=', $request->input('to'));
+        if ($request->filled('sort')) $query->orderBy($request->get('sort'), $request->get('order', 'asc'));
 
         return response()->json(['data' => $query->get()]);
     }
+
 
     /**
      * @OA\Get(
