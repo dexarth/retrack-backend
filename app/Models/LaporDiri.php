@@ -35,4 +35,14 @@ class LaporDiri extends Model
         return $this->belongsTo(User::class, 'user_id'); 
     }
 
+    public function mentorAccount()
+    {
+        return $this->belongsTo(User::class, 'mentor_id', 'id');
+    }
+
+    public function menteeAccount()
+    {
+        return $this->belongsTo(User::class, 'mentee_id', 'id');
+    }
+
 }

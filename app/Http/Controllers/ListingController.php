@@ -86,7 +86,8 @@ class ListingController extends Controller
                 $query->with(['user:id,name']);
             } elseif (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
                 $query->with([
-                    'mentor.user:id,name',
+                    'mentorAccount:id,name',
+                    'mentor:user_id,parol_daerah',
                     'mentee:user_id,id_prospek',
                     'mentee.user:id,name',
                 ]);
@@ -289,8 +290,8 @@ class ListingController extends Controller
 
         // allowlist relations (use singular names that match your model methods)
         $allowedWith = [
-            'laporan'            => ['mentor','mentee','user','mentorAccount'],
-            'lapordiri'          => ['mentor','mentee'],
+            'laporan'            => ['mentor','mentee','mentorAccount'],
+            'lapordiri'          => ['mentor','mentee','mentorAccount'],
             'health_monitorings' => ['mentor','mentee','menteeAccount'],
             'staff_monitorings'  => ['mentor','mentee','csi'],
             'blogs'              => ['blog_category'],
