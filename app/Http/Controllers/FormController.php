@@ -12,6 +12,8 @@ use App\Http\Controllers\NotificationController;
 use App\Models\Laporan;
 use App\Models\HealthMonitoring;
 use App\Models\LaporDiri;
+use App\Models\Mentee;
+use App\Models\User;
 
 class FormController extends Controller
 {
@@ -392,6 +394,93 @@ class FormController extends Controller
      */
     private function validateFormLimitations(string $formName, Request $request, ?int $routeId = null)
     {
+        // === Mentee: unique email & id prospek only ===
+        if ($formName === 'form-mentees') {
+            $menteeData = (array) $request->input('mentees', []);
+            $userData   = (array) $request->input('users',   []);
+
+            // incoming ids (when editing)
+            $menteeId = data_get($menteeData, 'id');          // mentees.id (if editing)
+            $userId   = data_get($userData, 'id')             // users.id (if editing)
+                    ?? data_get($menteeData, 'user_id');     // or from mentee record if you have it
+
+            $prospekId    = trim((string) data_get($menteeData, 'id_prospek'));
+            $prospekEmail = trim((string) data_get($userData,   'email'));
+
+            if ($prospekId === '') {
+                return response()->json(['message' => 'ID prospek tidak dijumpai.'], 400);
+            }
+            if ($prospekEmail === '') {
+                return response()->json(['message' => 'Email tidak dijumpai.'], 400);
+            }
+
+            // ---- unique checks ----
+            // (A) id_prospek unique in mentees table
+            $existsProspekId = Mentee::where('id_prospek', $prospekId)
+                ->when($menteeId, fn($q) => $q->where('id', '!=', $menteeId))
+                ->exists();
+
+            // (B) email unique in users table (case-insensitive)
+            $existsProspekEmail = User::whereRaw('LOWER(email) = LOWER(?)', [$prospekEmail])
+                ->when($userId, fn($q) => $q->where('id', '!=', $userId))
+                ->exists();
+
+            if ($existsProspekId) {
+                abort(response()->json(['message' => 'Maaf, prospek dengan SMPP tersebut sudah ada.'], 422));
+            }
+            if ($existsProspekEmail) {
+                abort(response()->json(['message' => 'Maaf, prospek dengan Emel tersebut sudah ada.'], 422));
+            }
+        }
+
+        // === Mentors : unique email only ===
+        if ($formName === 'form-mentors') {
+            $mentorData = (array) $request->input('mentors', []);
+            $userData   = (array) $request->input('users',   []);
+
+            // prefer explicit users.id; fallback to mentors.user_id; then route id
+            $userId = data_get($userData, 'id')
+                ?? data_get($mentorData, 'user_id')
+                ?? $routeId;
+
+            $email  = trim((string) data_get($userData, 'email'));
+            if ($email === '') {
+                return response()->json(['message' => 'Email tidak dijumpai.'], 400);
+            }
+
+            $exists = User::whereRaw('LOWER(email) = LOWER(?)', [$email])
+                ->when($userId, fn($q) => $q->where('id', '!=', $userId))
+                ->exists();
+
+            if ($exists) {
+                abort(response()->json(['message' => 'Maaf, email tersebut sudah digunakan.'], 422));
+            }
+        }
+
+        // === Admins : unique email only ===
+        if ($formName === 'form-admins') {
+            $adminData = (array) $request->input('admins', []);
+            $userData  = (array) $request->input('users',  []);
+
+            // prefer explicit users.id; fallback to admins.user_id; then route id
+            $userId = data_get($userData, 'id')
+                ?? data_get($adminData, 'user_id')
+                ?? $routeId;
+
+            $email  = trim((string) data_get($userData, 'email'));
+            if ($email === '') {
+                return response()->json(['message' => 'Email tidak dijumpai.'], 400);
+            }
+
+            $exists = User::whereRaw('LOWER(email) = LOWER(?)', [$email])
+                ->when($userId, fn($q) => $q->where('id', '!=', $userId))
+                ->exists();
+
+            if ($exists) {
+                abort(response()->json(['message' => 'Maaf, email tersebut sudah digunakan.'], 422));
+            }
+        }
+
         // === Laporan Mentee ===
         if ($formName === 'laporan-mentee') {
             $payload = (array) $request->input('laporan_mentee', []);
