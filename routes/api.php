@@ -72,4 +72,8 @@ Route::middleware('auth:sanctum')->get('/reverse-geocode', [GeoController::class
 
 Route::middleware('auth:sanctum')->get('/forward-geocode', [GeoController::class, 'forward']);
 
+Route::middleware('auth:sanctum')->get('/listing-late-submissions', [ListingController::class, 'menteesLateSubmissions']);
+
+Route::middleware('auth:sanctum')->get('/listing-late-submissions-mentor', [ListingController::class, 'menteesLateSubmissionsForMentor']);
+
 

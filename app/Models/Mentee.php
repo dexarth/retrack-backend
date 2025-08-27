@@ -45,4 +45,10 @@ class Mentee extends Model
     {
         return $this->belongsTo(Mentor::class, 'mentor_id', 'user_id');
     }
+
+    public function laporan()
+    {
+        // laporan.mentee_id → mentees.user_id
+        return $this->hasMany(\App\Models\Laporan::class, 'mentee_id', 'user_id');
+    }
 }

@@ -45,11 +45,11 @@ class NotifyMenteesOverdueLaporan extends Command
             $lastHuman = $r->last_at ? Carbon::parse($r->last_at)->diffForHumans() : null;
 
             $payload = [
-                'title' => 'Ingatkan Laporan',
-                'body'  => $lastHuman
+                'title' => 'PERINGATAN!',
+                'message'  => $lastHuman
                     ? "Anda belum hantar laporan sejak {$lastHuman}."
                     : "Anda belum pernah hantar laporan. Sila hantar laporan pertama.",
-                'url'   => url('/mentee/dashboard'),
+                'url'   => '/mentee/laporan/add',
                 'type'  => 'laporan_overdue_48h',
             ];
 

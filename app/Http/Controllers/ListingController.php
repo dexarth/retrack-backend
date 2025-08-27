@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Mentee;
 
 class ListingController extends Controller
 {
@@ -450,6 +451,81 @@ class ListingController extends Controller
         }
 
         return response()->json(['data' => $responseData]);
+    }
+
+    public function menteesLateSubmissions(Request $request)
+    {
+        $days = max(0, (int) $request->query('days', 2));
+
+        // Scope by daerah: query ?daerah=... overrides admin’s daerah
+        $daerah = $request->query('daerah')
+            ?: DB::table('admins')->where('user_id', auth()->id())->value('parol_daerah');
+
+        if (!$daerah) {
+            return response()->json(['data' => []]);
+        }
+
+        // “Past N days” => no laporan with created_at >= cutoff
+        $cutoff = now()->subDays($days)->startOfDay(); // adjust to endOfDay() if you want stricter window
+
+        // Query
+        $query = Mentee::query()
+            ->with([
+                'mentor:id,user_id,parol_daerah',
+                // keep columns small; rely on accessor for profile_photo_url
+                'user:id,name',
+            ])
+            ->whereHas('mentor', fn($q) => $q->where('parol_daerah', $daerah))
+            ->whereDoesntHave('laporan', fn($q) => $q->where('created_at', '>=', $cutoff))
+            ->select([
+                'id','user_id','id_prospek','daerah','jantina','no_tel',
+                'alamat_rumah','huraian_alamat','rumah_lat','rumah_long',
+                'tarikh_bebas','mentor_id','kategori_prospek','jenis_penamatan',
+                'nama_waris_1','no_tel_waris_1','nama_waris_2','no_tel_waris_2',
+                'created_at','updated_at',
+            ]);
+
+        $rows = $query->get();
+
+        // Ensure `user.profile_photo_url` exists in payload (Jetstream usually appends it)
+        $data = $rows->map(function ($m) {
+            $arr = $m->toArray();
+            if (isset($m->user)) {
+                $arr['user']['profile_photo_url'] = $m->user->profile_photo_url ?? $arr['user']['profile_photo_url'] ?? null;
+            }
+            return $arr;
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function menteesLateSubmissionsForMentor(Request $request)
+    {
+        $days = max(0, (int) $request->query('days', 2));
+        $mentorId = auth()->id(); // authenticated mentor user_id
+
+        if (!$mentorId) return response()->json(['data' => []]);
+
+        $cutoff = now()->subDays($days)->startOfDay();
+
+        $mentees = \App\Models\Mentee::with(['user:id,name', 'mentor:user_id,parol_daerah'])
+            ->where('mentor_id', $mentorId)
+            ->whereDoesntHave('laporan', fn($q) => $q->where('created_at', '>=', $cutoff))
+            ->get([
+                'id','user_id','id_prospek','daerah','jantina','no_tel',
+                'alamat_rumah','huraian_alamat','rumah_lat','rumah_long',
+                'tarikh_bebas','mentor_id','kategori_prospek','jenis_penamatan',
+                'nama_waris_1','no_tel_waris_1','nama_waris_2','no_tel_waris_2',
+                'created_at','updated_at',
+            ]);
+
+        $data = $mentees->map(function ($m) {
+            $arr = $m->toArray();
+            $arr['user']['profile_photo_path'] = $m->user->profile_photo_path ?? null;
+            return $arr;
+        });
+
+        return response()->json(['data' => $data]);
     }
 
     protected function resolveModelFromTable(string $table): ?string
