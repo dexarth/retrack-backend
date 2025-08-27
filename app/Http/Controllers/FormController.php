@@ -394,12 +394,15 @@ class FormController extends Controller
     {
         // === Laporan Mentee ===
         if ($formName === 'laporan-mentee') {
-            $menteeId = data_get($request->all(), 'mentee_id')
-                ?? data_get($request->all(), 'laporan_mentee.mentee_id')
-                ?? auth()->id();
+            $payload = (array) $request->input('laporan_mentee', []);
+            if (empty($payload)) {
+                $payload = (array) $request->input('laporan', []); // <-- your React code sends this
+            }
 
+            // mentee_id is required; do NOT silently fall back to auth()->id()
+            $menteeId = data_get($payload, 'mentee_id');
             if (!$menteeId || !is_numeric($menteeId)) {
-                abort(response()->json(['message' => 'ID mentee tidak dijumpai atau tidak sah.'], 400));
+                return response()->json(['message' => 'ID mentee tidak dijumpai atau tidak sah.'], 400);
             }
 
             $exists = Laporan::where('mentee_id', $menteeId)
@@ -415,8 +418,8 @@ class FormController extends Controller
 
         // === Health Monitoring ===
         if ($formName === 'form-health') {
-            $menteeId = data_get($request->all(), 'mentee_id')
-                ?? data_get($request->all(), 'health.mentee_id')
+            $payload = (array) $request->input('health_monitorings', []);
+            $menteeId = data_get($payload, 'mentee_id')
                 ?? auth()->id();
 
             if (!$menteeId || !is_numeric($menteeId)) {
