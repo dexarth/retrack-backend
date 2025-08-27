@@ -89,14 +89,13 @@ class ListingController extends Controller
                     'mentorAccount:id,name',
                     'mentor:user_id,parol_daerah',
                     'mentee:user_id,id_prospek',
-                    'mentee.user:id,name',
+                    'menteeAccount:id,name',
                 ]);
             } elseif (in_array($table, ['staff_monitorings'], true)) {
                 $query->with([
                     'user:id,name',
-                    'mentor.user:id,name',
+                    'mentorAccount:id,name',
                     'mentee:user_id,id_prospek,huraian_alamat,alamat_rumah',
-                    'mentee.user:id,name',
                     'csi:id,nama_syarikat,huraian_alamat,alamat_syarikat'
                 ]);
             }
@@ -292,8 +291,8 @@ class ListingController extends Controller
         $allowedWith = [
             'laporan'            => ['mentor','mentee','mentorAccount'],
             'lapordiri'          => ['mentor','mentee','mentorAccount'],
-            'health_monitorings' => ['mentor','mentee','menteeAccount'],
-            'staff_monitorings'  => ['mentor','mentee','csi'],
+            'health_monitorings' => ['mentor','mentee','menteeAccount','mentorAccount'],
+            'staff_monitorings'  => ['mentor','mentee','csi','mentorAccount'],
             'blogs'              => ['blog_category'],
             'mentors'            => ['user'],
             'mentees'            => ['mentor','user'], // ✅ singular 'mentor'
