@@ -66,6 +66,7 @@ class NotificationController extends Controller
             // Build payload with sender info
             $placeholders = [
                 ':id'     => $primary->id,
+                ':uuid'     => $primary->uuid,
                 ':user'   => $sender?->name ?? 'Sistem',
                 ':sender' => $sender?->name ?? 'Sistem',
             ];
