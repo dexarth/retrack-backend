@@ -122,6 +122,8 @@ return [
 
     'middleware' => [
         'web',
+        'auth', 
+        'devOnly',
         Authorize::class,
     ],
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\TestNotificationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GeoController;
 use App\Http\Controllers\GeoControllerNominatim;
+use App\Http\Controllers\ImageController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -76,4 +77,7 @@ Route::middleware('auth:sanctum')->get('/listing-late-submissions', [ListingCont
 
 Route::middleware('auth:sanctum')->get('/listing-late-submissions-mentor', [ListingController::class, 'menteesLateSubmissionsForMentor']);
 
-
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/media/{path}', [ImageController::class, 'show'])
+        ->where('path', '.*'); // allow nested paths like uploads/...
+});
