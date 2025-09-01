@@ -12,6 +12,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GeoController;
 use App\Http\Controllers\GeoControllerNominatim;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\AuthController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -24,7 +25,7 @@ Route::get('/user', function (Request $request) {
 Route::post('/login', [UserController::class, 'login']);
 
 //logout
-Route::middleware('auth:sanctum')->post('/logout', [UserController::class, 'logout']);
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
 //for testing purpose
 Route::middleware('auth:sanctum')->get('/weather/{city}', [WeatherController::class, 'getWeatherByCity']);
