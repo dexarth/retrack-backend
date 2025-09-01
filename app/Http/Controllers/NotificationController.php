@@ -51,9 +51,19 @@ class NotificationController extends Controller
     public static function trigger(string $tableName, $primary): void
     {
         try {
-            Log::info("data notification:", ['tableName' => $tableName, 'primary' => $primary]);
-            $config = DB::table('notifications_config')->where('table_name', $tableName)->first();
-            if (!$config) return;
+            Log::info("🔔 Trigger notification start", [
+                'table' => $tableName,
+                'record' => $primary,
+            ]);
+
+            $config = DB::table('notifications_config')
+                ->where('table_name', $tableName)
+                ->first();
+
+            if (!$config) {
+                Log::warning("⚠️ No notification config found", ['table' => $tableName]);
+                return;
+            }
 
             // Resolve sender
             $sender = null;
@@ -63,38 +73,81 @@ class NotificationController extends Controller
                 $sender = \App\Models\User::find($primary->{$config->sender});
             }
 
-            // Build payload with sender info
+            // Build payload
             $placeholders = [
-                ':id'     => $primary->id,
-                ':uuid'     => $primary->uuid,
+                ':id'     => $primary->id ?? null,
+                ':uuid'   => $primary->uuid ?? null,
                 ':user'   => $sender?->name ?? 'Sistem',
                 ':sender' => $sender?->name ?? 'Sistem',
             ];
-            $template = json_decode($config->payload_template, true);
-            $payload = array_map(fn($val) => strtr($val, $placeholders), $template);
+            $template = json_decode($config->payload_template, true) ?? [];
+            $payload  = array_map(fn($val) => strtr($val, $placeholders), $template);
 
-            // Resolve receiver
+            Log::info("📦 Notification payload prepared", [
+                'payload' => $payload,
+                'sender'  => $sender?->only(['id','name','role']),
+                'receiver_config' => $config->receiver,
+            ]);
+
+            // Resolve receiver(s)
             if ($config->receiver === 'auth') {
                 $receiver = auth()->user();
-                $receiver?->notify(new GeneralNotification($payload));
+                if ($receiver) {
+                    $receiver->notify(new GeneralNotification($payload));
+                    Log::info("✅ Notified auth user", ['id' => $receiver->id, 'name' => $receiver->name]);
+                }
             } elseif (str_starts_with($config->receiver, 'role:')) {
                 $role = str_replace('role:', '', $config->receiver);
                 $users = \App\Models\User::where('role', $role)->get();
                 foreach ($users as $user) {
                     $user->notify(new GeneralNotification($payload));
                 }
-            } elseif (!empty($primary->{$config->receiver})) {
-                // mentor_id actually holds the users.id, so find the User directly
-                $receiver = \App\Models\User::find($primary->{$config->receiver});
-                $receiver?->notify(new GeneralNotification($payload));
-            }
+                Log::info("✅ Notified role users", ['role' => $role, 'count' => $users->count()]);
+            } elseif ($config->receiver === 'admin') {
+                // parol_daerah based admin resolution
+                $daerah = $primary->parol_daerah ?? null;
 
+                if (!$daerah && !empty($primary->mentor_id)) {
+                    $daerah = \DB::table('mentors')
+                        ->where(function ($q) use ($primary) {
+                            $q->where('user_id', $primary->mentor_id)
+                            ->orWhere('id', $primary->mentor_id);
+                        })
+                        ->value('parol_daerah');
+                }
+
+                $adminIds = \DB::table('admins')
+                    ->when($daerah, fn($q) => $q->where('parol_daerah', $daerah))
+                    ->pluck('user_id');
+
+                $targets = \App\Models\User::whereIn('id', $adminIds)->get();
+                foreach ($targets as $u) {
+                    $u->notify(new \App\Notifications\GeneralNotification($payload));
+                }
+                Log::info("✅ Notified admin(s)", [
+                    'daerah' => $daerah,
+                    'count'  => $targets->count(),
+                    'ids'    => $targets->pluck('id'),
+                ]);
+            } elseif (!empty($primary->{$config->receiver})) {
+                $receiver = \App\Models\User::find($primary->{$config->receiver});
+                if ($receiver) {
+                    $receiver->notify(new GeneralNotification($payload));
+                    Log::info("✅ Notified direct receiver", ['id' => $receiver->id, 'name' => $receiver->name]);
+                }
+            } else {
+                Log::warning("⚠️ No receiver resolved", [
+                    'config_receiver' => $config->receiver,
+                    'primary'         => $primary,
+                ]);
+            }
         } catch (\Throwable $e) {
-            \Log::error("Notification failed", [
+            Log::error("❌ Notification failed", [
                 'error' => $e->getMessage(),
                 'table' => $tableName,
                 'record_id' => $primary->id ?? null,
                 'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
