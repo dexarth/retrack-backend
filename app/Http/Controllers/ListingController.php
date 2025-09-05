@@ -9,9 +9,24 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Mentee;
+use Vinkla\Hashids\Facades\Hashids;
 
 class ListingController extends Controller
 {
+
+    protected function encodeId(int $id): string {
+    return Hashids::encode($id);
+    }
+    protected function decodeId(string $val): ?int {
+    if (is_numeric($val)) return (int)$val;        // backward compat
+    $d = Hashids::decode($val); return $d[0] ?? null;
+    }
+    protected function addPublicId($row): array {
+    $arr = is_array($row) ? $row : $row->toArray();
+    if (!empty($arr['id'])) $arr['public_id'] = $this->encodeId((int)$arr['id']);
+    return $arr;                                    // not saved — response only
+    }
+
   	protected function logCtx(string $msg, array $ctx = [], string $level = 'info'): void
     {
         $ctx = array_merge([
@@ -130,6 +145,10 @@ class ListingController extends Controller
 
             $data = $query->get();
             $this->logCtx('getListing: success', ['rowCount' => $data->count()]);
+
+            if (in_array($table, ['laporan','lapordiri','health_monitorings','staff_monitorings'], true)) {
+                $data = $data->map(fn($r) => $this->addPublicId($r));
+            }
 
             return response()->json(['data' => $data]);
         } catch (Throwable $e) {
@@ -380,7 +399,18 @@ class ListingController extends Controller
         if ($request->filled('to'))   $query->whereDate('updated_at', '<=', $request->input('to'));
         if ($request->filled('sort')) $query->orderBy($request->get('sort'), $request->get('order', 'asc'));
 
-        return response()->json(['data' => $query->get()]);
+        $rows = $query->get();
+
+        // attach public_id (special-case admins to use user_id)
+        $obfuscate = [
+            'laporan','lapordiri','health_monitorings','staff_monitorings'
+        ];
+
+        $data = in_array($table, $obfuscate, true)
+            ? $rows->map(fn($r) => $this->addPublicId($r, $table))
+            : $rows;
+
+        return response()->json(['data' => $data]);
     }
 
 
@@ -418,33 +448,94 @@ class ListingController extends Controller
      *     )
      * )
      */
+    private function singleRecordEagerLoads(string $table): array
+    {
+        // returns [$with, $withCount]
+        if ($table === 'blogs') {
+            return [['blog_category.category'], []];
+        }
+
+        if ($table === 'mentors') {
+            return [['user:id,name'], ['mentees']]; // withCount('mentees')
+        }
+
+        if (in_array($table, ['admins', 'mentees'], true)) {
+            return [['user:id,name'], []];
+        }
+
+        if (in_array($table, ['lapordiri', 'laporan', 'health_monitorings'], true)) {
+            return [[
+                'mentorAccount:id,name',
+                'mentor:user_id,parol_daerah',
+                'mentee:user_id,id_prospek',
+                'menteeAccount:id,name',
+            ], []];
+        }
+
+        if ($table === 'staff_monitorings') {
+            return [[
+                'user:id,name',
+                'mentorAccount:id,name',
+                'mentee:user_id,id_prospek,huraian_alamat,alamat_rumah',
+                'csi:id,nama_syarikat,huraian_alamat,alamat_syarikat',
+            ], []];
+        }
+
+        return [[], []]; // default: no eager loads
+    }
+
     public function getSingleRecord($formName, $id)
     {
         // Check if this is a form relation
         $relation = DB::table('table_relations')->where('form_name', $formName)->first();
 
+        // Decode: allow raw numeric id (backward compat) or Hashids public_id
+        $realId = is_numeric($id) ? (int) $id : (Hashids::decode((string) $id)[0] ?? null);
+        if ($realId === null) {
+            return response()->json(['error' => 'Invalid id'], 404);
+        }
+
         if (!$relation) {
             // fallback to single-table model
             $modelClass = $this->resolveModelFromTable($formName);
-
             if (!$modelClass || !class_exists($modelClass)) {
                 return response()->json(['error' => 'Model not found.'], 404);
             }
 
-            $record = $modelClass::find($id);
+            // 🔥 apply eager loads like your listing endpoint
+            [$with, $withCount] = $this->singleRecordEagerLoads($formName);
 
-            return $record
-                ? response()->json(['data' => $record])
-                : response()->json(['error' => 'Record not found.'], 404);
+            $query = $modelClass::query();
+            if (!empty($with))      $query->with($with);
+            if (!empty($withCount)) $query->withCount($withCount);
+
+            $record = $query->find($realId);
+            if (!$record) {
+                return response()->json(['error' => 'Record not found.'], 404);
+            }
+
+            // attach public_id (stateless; not saved to DB)
+            $payload = $record->toArray();
+            if (isset($payload['id'])) {
+                $payload['public_id'] = Hashids::encode((int) $payload['id']);
+            }
+
+            return response()->json(['data' => $payload]);
         }
 
-        // Primary table setup
+        // === relation-driven (your existing code) ===
         $primaryTable = $relation->primary_table;
-        $primaryKey = $relation->primary_column ?? 'id';
+        $primaryKey   = $relation->primary_column ?? 'id';
 
-        $primaryModel = $this->resolveModelFromTable($primaryTable);
-        $primaryRecord = $primaryModel::find($id);
+        $primaryModel  = $this->resolveModelFromTable($primaryTable);
 
+        // apply eager loads if primary table matches any of your presets
+        [$with, $withCount] = $this->singleRecordEagerLoads($primaryTable);
+        $q = $primaryModel::query();
+        if (!empty($with))      $q->with($with);
+        if (!empty($withCount)) $q->withCount($withCount);
+
+        $primaryRecord = $q->find($realId);
         if (!$primaryRecord) {
             return response()->json(['error' => 'Primary record not found.'], 404);
         }
@@ -453,6 +544,11 @@ class ListingController extends Controller
             $primaryTable => $primaryRecord->toArray(),
         ];
 
+        // attach public_id to primary
+        if (isset($responseData[$primaryTable]['id'])) {
+            $responseData[$primaryTable]['public_id'] = Hashids::encode((int) $responseData[$primaryTable]['id']);
+        }
+
         // Fetch related tables if any
         $relatedTables = DB::table('table_relations')
             ->where('form_name', $formName)
@@ -460,11 +556,15 @@ class ListingController extends Controller
             ->get();
 
         foreach ($relatedTables as $rel) {
-            $relatedModel = $this->resolveModelFromTable($rel->related_table);
+            $relatedModel  = $this->resolveModelFromTable($rel->related_table);
             $relatedRecord = $relatedModel::where($rel->foreign_key, $primaryRecord->{$rel->primary_column})->first();
 
             if ($relatedRecord) {
                 $responseData[$rel->related_table] = $relatedRecord->toArray();
+                if (isset($responseData[$rel->related_table]['id'])) {
+                    $responseData[$rel->related_table]['public_id'] =
+                        Hashids::encode((int) $responseData[$rel->related_table]['id']);
+                }
             }
         }
 

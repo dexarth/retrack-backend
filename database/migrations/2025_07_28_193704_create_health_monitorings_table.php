@@ -9,7 +9,6 @@ return new class extends Migration {
     {
         Schema::create('health_monitorings', function (Blueprint $table) {
             $table->id();
-            $table->uuid('uuid')->unique();
             $table->foreignId('mentee_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('mentor_id')->constrained('users')->onDelete('cascade');
             $table->date('date')->default(now());

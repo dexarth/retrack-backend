@@ -14,9 +14,12 @@ use App\Models\HealthMonitoring;
 use App\Models\LaporDiri;
 use App\Models\Mentee;
 use App\Models\User;
+use Vinkla\Hashids\Facades\Hashids;
+use Illuminate\Support\Facades\Log;
 
 class FormController extends Controller
 {
+
     /**
      * @OA\Post(
      *     path="/api/form-submit/{formName}",
@@ -245,8 +248,15 @@ class FormController extends Controller
      *     )
      * )
      */
-    public function updateForm(Request $request, string $formName, int $routeId)
+    public function updateForm(Request $request, string $formName, string $routeId)
     {
+        // Decode public_id → real int id
+        $routeId = is_numeric($routeId) ? (int) $routeId : (Hashids::decode($routeId)[0] ?? null);
+        Log::info('updateForm', ['form'=>$formName, 'routeId'=>$routeId]);
+        if (!$routeId) {
+            return response()->json(['error' => 'Invalid ID'], 404);
+        }
+
         $this->validateFormLimitations($formName, $request, $routeId); 
 
         $relationConfig = DB::table('table_relations')->where('form_name', $formName)->get();
@@ -291,7 +301,7 @@ class FormController extends Controller
                 return response()->json(['error' => "Model not found for table: $primaryTable"], 404);
             }
 
-            $primaryId = $primaryData[$primaryColumn] ?? $routeId;
+            $primaryId = $routeId ?? $primaryData[$primaryColumn];
             $existingPrimaryModel = $primaryModelClass::find($primaryId);
 
             if (!$existingPrimaryModel) {
