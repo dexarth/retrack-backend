@@ -12,16 +12,6 @@ use App\Models\Mentee;
 
 class ListingController extends Controller
 {
-  	protected function logCtx(string $msg, array $ctx = [], string $level = 'info'): void
-    {
-        $ctx = array_merge([
-            'user_id' => auth()->id(),
-            'env'     => app()->environment(),
-            'path'    => request()->path(),
-        ], $ctx);
-
-        Log::$level($msg, $ctx);
-    }
     /**
      * @OA\Get(
      *     path="/api/listing/{table}",
@@ -55,44 +45,38 @@ class ListingController extends Controller
      */
     public function getListing(Request $request, $table)
     {
-        $this->logCtx('getListing: entry', ['table' => $table, 'query' => $request->query()]);
-
+        // 1) Table whitelist
         $allowedTables = DB::table('allowed_tables')
             ->where('read', true)
             ->pluck('table_name')
             ->toArray();
 
         if (!in_array($table, $allowedTables, true)) {
-            $this->logCtx('getListing: table not allowed', ['table' => $table], 'warning');
             return response()->json(['error' => 'Table not allowed.'], 403);
         }
 
+        // 2) Resolve model
         $modelClass = $this->resolveModelFromTable($table);
-        $this->logCtx('getListing: resolved model', ['table' => $table, 'modelClass' => $modelClass]);
-
         if (!$modelClass || !class_exists($modelClass)) {
-            $this->logCtx('getListing: model not found', ['table' => $table], 'error');
             return response()->json(['error' => 'Model not found for this table.'], 404);
         }
 
         try {
-            $model   = new $modelClass;
-            $pk      = $model->getKeyName();
-            $tableDb = $model->getTable();
-            $allCols = Schema::getColumnListing($tableDb);
+            $model     = new $modelClass;
+            $pk        = $model->getKeyName();
+            $allCols   = Schema::getColumnListing($table); // actual DB columns
+            $requested = $request->query('columns');       // e.g. "id,nama_penuh,email"
 
-            $this->logCtx('getListing: schema', ['tableDb' => $tableDb, 'pk' => $pk, 'colCount' => count($allCols)]);
-
-            $requested = $request->query('columns');
+            // 3) Sanitize requested columns
             $selectCols = null;
             if ($requested) {
                 $req  = array_filter(array_map('trim', explode(',', $requested)));
                 $safe = array_values(array_intersect($req, $allCols));
                 if (!in_array($pk, $safe, true)) $safe[] = $pk;
-                if ($safe) $selectCols = $safe;
-                $this->logCtx('getListing: sanitized columns', ['requested' => $req, 'selected' => $selectCols]);
+                if (count($safe)) $selectCols = $safe;
             }
 
+            // 4) Build query + relations
             $query = $modelClass::query();
 
             if ($table === 'blogs') {
@@ -108,7 +92,7 @@ class ListingController extends Controller
                     'mentee:user_id,id_prospek',
                     'menteeAccount:id,name',
                 ]);
-            } elseif ($table === 'staff_monitorings') {
+            } elseif (in_array($table, ['staff_monitorings'], true)) {
                 $query->with([
                     'user:id,name',
                     'mentorAccount:id,name',
@@ -117,26 +101,24 @@ class ListingController extends Controller
                 ]);
             }
 
+            // 5) Apply select
             if ($selectCols) $query->select($selectCols);
 
-            $orderBy  = $request->query('order_by');
-            $orderDir = strtolower($request->query('order_dir', 'asc'));
+            // 6) Safe ORDER BY
+            $orderBy  = $request->query('order_by');              // column name
+            $orderDir = strtolower($request->query('order_dir', 'asc')); // asc|desc
+
             if ($orderBy && in_array($orderBy, $allCols, true)) {
                 if (!in_array($orderDir, ['asc','desc'], true)) $orderDir = 'asc';
                 $query->orderBy($orderBy, $orderDir);
             } else {
+                // Sensible default (optional)
                 $query->orderBy($pk, 'desc');
             }
 
             $data = $query->get();
-            $this->logCtx('getListing: success', ['rowCount' => $data->count()]);
-
             return response()->json(['data' => $data]);
-        } catch (Throwable $e) {
-            $this->logCtx('getListing: exception', [
-                'exception' => get_class($e),
-                'message'   => $e->getMessage(),
-            ], 'error');
+        } catch (\Exception $e) {
             return response()->json(['error' => 'Error fetching data: ' . $e->getMessage()], 500);
         }
     }
@@ -548,35 +530,18 @@ class ListingController extends Controller
 
     protected function resolveModelFromTable(string $table): ?string
     {
-        $this->logCtx('resolveModelFromTable: start', ['table' => $table]);
+        $map = DB::table('model_mappings')->where('key', $table)->value('model_class');
 
-        $explicit = DB::table('model_mappings')->where('key', $table)->value('model_class');
-        if ($explicit && class_exists($explicit)) {
-            $this->logCtx('resolveModelFromTable: using explicit', ['modelClass' => $explicit]);
-            return $explicit;
+        // Check if manually mapped
+        if (isset($map[$table])) {
+            return $map[$table];
         }
 
-        $hardMap = [
-            'lapordiri'  => \App\Models\LaporDiri::class,
-            'lapor-diri' => \App\Models\LaporDiri::class,
-        ];
-        if (isset($hardMap[$table]) && class_exists($hardMap[$table])) {
-            $this->logCtx('resolveModelFromTable: using hardMap', ['modelClass' => $hardMap[$table]]);
-            return $hardMap[$table];
-        }
+        // Try dynamic resolution (e.g., 'menus' => 'App\Models\Menu')
+        $singular = Str::studly(Str::singular($table));
+        $modelClass = "App\\Models\\$singular";
 
-        $normalized = str_replace(['-', ' '], '_', strtolower($table));
-        $studly     = Str::studly(Str::singular($normalized));
-        $class      = "App\\Models\\{$studly}";
-
-        $this->logCtx('resolveModelFromTable: dynamic guess', [
-            'normalized' => $normalized,
-            'studly'     => $studly,
-            'guessed'    => $class,
-            'exists'     => class_exists($class),
-        ]);
-
-        return class_exists($class) ? $class : null;
+        return class_exists($modelClass) ? $modelClass : null;
     }
 
 }
