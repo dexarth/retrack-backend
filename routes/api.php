@@ -13,6 +13,7 @@ use App\Http\Controllers\GeoController;
 use App\Http\Controllers\GeoControllerNominatim;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ReportController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -82,3 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/media/{path}', [ImageController::class, 'show'])
         ->where('path', '.*'); // allow nested paths like uploads/...
 });
+
+Route::middleware('auth:sanctum')->post('/reports/laporan-mentee', [ReportController::class, 'laporanMenteePdf']);
+
+Route::middleware('auth:sanctum')->post('/reports/staff-monitorings', [ReportController::class, 'staffMonitorings']);

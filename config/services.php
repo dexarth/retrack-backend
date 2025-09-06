@@ -39,4 +39,10 @@ return [
         ],
     ],
 
+    'jsreport' => [
+        'url' => env('JSREPORT_URL', 'http://localhost:5488'),
+        'template' => env('JSREPORT_TEMPLATE_LAPORAN', 'testing'),
+        'template_pemantauan' => env('JSREPORT_TEMPLATE_PEMANTAUAN', 'staff_monitorings'),
+    ],
+
 ];
