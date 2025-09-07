@@ -258,54 +258,55 @@ class FormController extends Controller
         DB::beginTransaction();
 
         try {
-            $primaryTable = $relationConfig->first()->primary_table;
+            $primaryTable  = $relationConfig->first()->primary_table;
             $primaryColumn = $relationConfig->first()->primary_column ?? 'id';
 
-            $payload = $request->all();
+            $payload     = $request->all();
             $primaryData = $payload[$primaryTable] ?? null;
 
+            // Support "table[field]" payload style from multipart/form-data
             if (!$primaryData) {
                 $primaryData = [];
-
                 foreach ($request->all() as $key => $value) {
-                    if (preg_match('/^' . preg_quote($primaryTable) . '\[(.+?)\]$/', $key, $matches)) {
-                        $field = $matches[1];
-                        $primaryData[$field] = $value;
+                    if (preg_match('/^' . preg_quote($primaryTable, '/') . '\[(.+?)\]$/', $key, $m)) {
+                        $primaryData[$m[1]] = $value;
                     }
                 }
             }
 
-            // Process file uploads for primary table
+            // Handle files for primary table
             $primaryFiles = $request->hasFile($primaryTable) ? $request->file($primaryTable) : [];
-
             if (!empty($primaryFiles)) {
                 $primaryData = array_merge($primaryData, $this->storeAndMapFiles($primaryFiles, $primaryTable));
             }
 
             if (!$primaryData) {
-                return response()->json(['error' => "Missing data for primary table: $primaryTable"], 400);
+                return response()->json(['error' => "Missing data for primary table: {$primaryTable}"], 400);
             }
 
             $primaryModelClass = $this->resolveModelFromTable($primaryTable);
             if (!$primaryModelClass) {
-                return response()->json(['error' => "Model not found for table: $primaryTable"], 404);
+                return response()->json(['error' => "Model not found for table: {$primaryTable}"], 404);
             }
 
-            $primaryId = $primaryData[$primaryColumn] ?? $routeId;
+            $primaryId            = $primaryData[$primaryColumn] ?? $routeId;
             $existingPrimaryModel = $primaryModelClass::find($primaryId);
-
             if (!$existingPrimaryModel) {
                 return response()->json(['error' => "Primary record not found."], 404);
             }
 
+            // --- capture original status BEFORE update (only relevant for blogs) ---
+            $originalStatus = $existingPrimaryModel->status ?? null;
+
+            // log & update primary
             $this->logChanges($formName, $primaryTable, $primaryId, $existingPrimaryModel->toArray(), $primaryData);
             $existingPrimaryModel->update($primaryData);
 
-            // Related tables
+            // --- update related tables, if any ---
             foreach ($relationConfig as $relation) {
                 if (!$relation->related_table) continue;
 
-                $relatedData = $payload[$relation->related_table] ?? null;
+                $relatedData  = $payload[$relation->related_table] ?? null;
                 $relatedFiles = $request->hasFile($relation->related_table)
                     ? $request->file($relation->related_table)
                     : [];
@@ -313,15 +314,13 @@ class FormController extends Controller
                 if ($relatedFiles) {
                     $relatedData = array_merge($relatedData ?? [], $this->storeAndMapFiles($relatedFiles, $relation->related_table));
                 }
-
                 if (!$relatedData) continue;
 
                 $relatedModelClass = $this->resolveModelFromTable($relation->related_table);
                 if (!$relatedModelClass) continue;
 
-                $foreignKey = $relation->foreign_key;
+                $foreignKey    = $relation->foreign_key;
                 $relatedRecord = $relatedModelClass::where($foreignKey, $primaryId)->first();
-
                 if (!$relatedRecord) continue;
 
                 $this->logChanges($formName, $relation->related_table, $relatedRecord->id, $relatedRecord->toArray(), $relatedData);
@@ -330,6 +329,26 @@ class FormController extends Controller
 
             DB::commit();
 
+            // ---------- 🔔 NOTIFICATION: only when blogs become 'diterbitkan' ----------
+            if ($primaryTable === 'blogs') {
+                // get latest status after update
+                $existingPrimaryModel->refresh();
+                $newStatus = $existingPrimaryModel->status ?? null;
+
+                // fire ONLY if transitioned into 'diterbitkan'
+                if ($newStatus === 'diterbitkan' && in_array($originalStatus, [null, 'draft', 'diarkibkan'], true)) {
+                    try {
+                        NotificationController::trigger('blogs', $existingPrimaryModel);
+                    } catch (\Throwable $e) {
+                        \Log::error('❌ Failed to trigger blog publish notification', [
+                            'id' => $existingPrimaryModel->id ?? null,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+            // -------------------------------------------------------------------------
+
             return response()->json(['message' => 'Data updated successfully.']);
 
         } catch (\Exception $e) {
@@ -337,8 +356,6 @@ class FormController extends Controller
             return response()->json(['error' => 'Update failed', 'details' => $e->getMessage()], 500);
         }
     }
-
-
 
     protected function logChanges(string $form, string $table, int $id, array $old, array $new): void
     {

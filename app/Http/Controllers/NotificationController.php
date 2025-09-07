@@ -67,6 +67,9 @@ class NotificationController extends Controller
                 'record' => $primary,
             ]);
 
+            // ❌ Remove the "blogs just-published" gate here.
+            // The status-transition check lives in FormController::updateForm() and submitForm().
+
             $config = DB::table('notifications_config')
                 ->where('table_name', $tableName)
                 ->first();
@@ -81,10 +84,10 @@ class NotificationController extends Controller
             if ($config->sender === 'auth') {
                 $sender = auth()->user();
             } elseif (!empty($primary->{$config->sender})) {
-                $sender = User::find($primary->{$config->sender});
+                $sender = \App\Models\User::find($primary->{$config->sender});
             }
 
-            // ----- Placeholders (except :prefix which is per-recipient) -----
+            // ----- Placeholders -----
             $placeholders = [
                 ':id'     => $primary->id          ?? null,
                 ':uuid'   => $primary->uuid        ?? null,
@@ -94,16 +97,13 @@ class NotificationController extends Controller
                 ':sender' => $sender?->name        ?? 'Sistem',
             ];
 
-            // Base payload without :prefix
-            $template = json_decode($config->payload_template, true) ?? [];
+            $template    = json_decode($config->payload_template, true) ?? [];
             $basePayload = [];
             foreach ($template as $k => $v) {
                 $basePayload[$k] = is_string($v) ? strtr($v, $placeholders) : $v;
             }
 
-            // Build per-user payload (inject :prefix, :role)
-            $payloadFor = function (User $u) use ($basePayload, $placeholders): array {
-                // Map role → route prefix (adjust if your paths differ)
+            $payloadFor = function (\App\Models\User $u) use ($basePayload, $placeholders): array {
                 $prefixMap = [
                     'superadmin' => '/admin',
                     'admin'      => '/admin',
@@ -113,17 +113,15 @@ class NotificationController extends Controller
                 $prefix = $prefixMap[$u->role] ?? '';
 
                 $p = $basePayload;
-                if (!empty($p['url'])) {
-                    $p['url'] = strtr($p['url'], [
+                $p['url'] = !empty($p['url'])
+                    ? strtr($p['url'], [
                         ':prefix' => $prefix,
                         ':role'   => $u->role,
                         ':slug'   => $placeholders[':slug'],
                         ':id'     => $placeholders[':id'],
-                    ]);
-                } else {
-                    // Fallback if url missing in template
-                    $p['url'] = "{$prefix}/sudut-info/{$placeholders[':slug']}";
-                }
+                    ])
+                    : "{$prefix}/sudut-info/{$placeholders[':slug']}";
+
                 return $p;
             };
 
@@ -136,58 +134,52 @@ class NotificationController extends Controller
             if ($config->receiver === 'auth') {
                 $receiver = auth()->user();
                 if ($receiver) {
-                    $receiver->notify(new GeneralNotification($payloadFor($receiver)));
-                    Log::info("✅ Notified auth user", ['id' => $receiver->id, 'name' => $receiver->name]);
+                    $receiver->notify(new \App\Notifications\GeneralNotification($payloadFor($receiver)));
                 }
 
             } elseif (str_starts_with($config->receiver, 'role:')) {
                 $role = substr($config->receiver, 5);
-                User::where('role', $role)
+                \App\Models\User::where('role', $role)
                     ->select(['id','role'])
                     ->chunkById(500, function ($chunk) use ($payloadFor) {
                         foreach ($chunk as $u) {
-                            $u->notify(new GeneralNotification($payloadFor($u)));
+                            $u->notify(new \App\Notifications\GeneralNotification($payloadFor($u)));
                         }
                     });
-                Log::info("✅ Notified role users", ['role' => $role]);
 
             } elseif (str_starts_with($config->receiver, 'roles:')) {
                 $roles = array_filter(array_map('trim', explode(',', substr($config->receiver, 6))));
                 if ($roles) {
-                    User::whereIn('role', $roles)
+                    \App\Models\User::whereIn('role', $roles)
                         ->select(['id','role'])
                         ->chunkById(500, function ($chunk) use ($payloadFor) {
                             foreach ($chunk as $u) {
-                                $u->notify(new GeneralNotification($payloadFor($u)));
+                                $u->notify(new \App\Notifications\GeneralNotification($payloadFor($u)));
                             }
                         });
-                    Log::info("✅ Notified roles", ['roles' => $roles]);
                 }
 
             } elseif ($config->receiver === 'all') {
-                // Optional guard: only broadcast if creator is admin
                 if (($sender?->role ?? null) !== 'admin') {
                     Log::info("🔕 Broadcast skipped (sender not admin).", ['sender_role' => $sender?->role]);
                 } else {
-                    User::query()
-                        ->when($sender, fn($q) => $q->where('id', '!=', $sender->id)) // exclude sender if you want
+                    \App\Models\User::query()
+                        ->when($sender, fn($q) => $q->where('id', '!=', $sender->id))
                         ->select(['id','role'])
                         ->chunkById(500, function ($chunk) use ($payloadFor) {
                             foreach ($chunk as $u) {
-                                $u->notify(new GeneralNotification($payloadFor($u)));
+                                $u->notify(new \App\Notifications\GeneralNotification($payloadFor($u)));
                             }
                         });
-                    Log::info("✅ Broadcasted to all users (except sender).");
                 }
 
             } elseif ($config->receiver === 'admin') {
-                // parol_daerah-based admin resolution
                 $daerah = $primary->parol_daerah ?? null;
                 if (!$daerah && !empty($primary->mentor_id)) {
                     $daerah = DB::table('mentors')
                         ->where(function ($q) use ($primary) {
                             $q->where('user_id', $primary->mentor_id)
-                              ->orWhere('id', $primary->mentor_id);
+                            ->orWhere('id', $primary->mentor_id);
                         })
                         ->value('parol_daerah');
                 }
@@ -196,23 +188,15 @@ class NotificationController extends Controller
                     ->when($daerah, fn($q) => $q->where('parol_daerah', $daerah))
                     ->pluck('user_id');
 
-                $targets = User::whereIn('id', $adminIds)->select(['id','role'])->get();
+                $targets = \App\Models\User::whereIn('id', $adminIds)->select(['id','role'])->get();
                 foreach ($targets as $u) {
-                    $u->notify(new GeneralNotification($payloadFor($u)));
+                    $u->notify(new \App\Notifications\GeneralNotification($payloadFor($u)));
                 }
 
-                Log::info("✅ Notified admin(s)", [
-                    'daerah' => $daerah,
-                    'count'  => $targets->count(),
-                    'ids'    => $targets->pluck('id'),
-                ]);
-
             } elseif (!empty($primary->{$config->receiver})) {
-                // direct user id column on primary (e.g., mentor_id, mentee_id)
-                $receiver = User::find($primary->{$config->receiver});
+                $receiver = \App\Models\User::find($primary->{$config->receiver});
                 if ($receiver) {
-                    $receiver->notify(new GeneralNotification($payloadFor($receiver)));
-                    Log::info("✅ Notified direct receiver", ['id' => $receiver->id, 'name' => $receiver->name]);
+                    $receiver->notify(new \App\Notifications\GeneralNotification($payloadFor($receiver)));
                 }
 
             } else {
