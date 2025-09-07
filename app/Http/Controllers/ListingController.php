@@ -308,7 +308,7 @@ class ListingController extends Controller
 
         // allowlist relations (use singular names that match your model methods)
         $allowedWith = [
-            'laporan'            => ['mentor','mentee','mentorAccount'],
+            'laporan'            => ['mentor','mentee','mentorAccount','menteeAccount'],
             'lapordiri'          => ['mentor','mentee','mentorAccount'],
             'health_monitorings' => ['mentor','mentee','menteeAccount','mentorAccount'],
             'staff_monitorings'  => ['mentor','mentee','csi','mentorAccount'],

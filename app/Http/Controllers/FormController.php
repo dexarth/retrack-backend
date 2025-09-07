@@ -443,10 +443,10 @@ class FormController extends Controller
                 ->exists();
 
             if ($existsProspekId) {
-                abort(response()->json(['message' => 'Maaf, prospek dengan SMPP tersebut sudah ada.'], 422));
+                abort(response()->json(['message' => 'Maaf, prospek dengan SMPP tersebut telah berdaftar.'], 422));
             }
             if ($existsProspekEmail) {
-                abort(response()->json(['message' => 'Maaf, prospek dengan Emel tersebut sudah ada.'], 422));
+                abort(response()->json(['message' => 'Maaf, prospek dengan Emel tersebut telah berdaftar.'], 422));
             }
         }
 
@@ -470,7 +470,7 @@ class FormController extends Controller
                 ->exists();
 
             if ($exists) {
-                abort(response()->json(['message' => 'Maaf, email tersebut sudah digunakan.'], 422));
+                abort(response()->json(['message' => 'Maaf, email tersebut telah berdaftar.'], 422));
             }
         }
 
@@ -494,7 +494,7 @@ class FormController extends Controller
                 ->exists();
 
             if ($exists) {
-                abort(response()->json(['message' => 'Maaf, email tersebut sudah digunakan.'], 422));
+                abort(response()->json(['message' => 'Maaf, email tersebut telah berdaftar.'], 422));
             }
         }
 
@@ -589,7 +589,7 @@ class FormController extends Controller
 
             if ($menteeExists) {
                 abort(response()->json([
-                    'message' => 'Mentee telah mempunyai rekod Lapor Diri pada tarikh ini. Sila kemas kini rekod Lapor Diri yang sedia ada.'
+                    'message' => 'Mentee telah mempunyai rekod Lapor Diri pada tarikh ini. Sila kemaskini rekod Lapor Diri yang sedia ada.'
                 ], 422));
             }
         }
