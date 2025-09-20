@@ -9,6 +9,7 @@ use App\Models\Mentor;
 use App\Models\Mentee;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class UserController extends Controller
 {
@@ -73,10 +74,11 @@ class UserController extends Controller
      *     @OA\Response(response=422, description="Invalid credentials")
      * )
      */
+
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email'    => 'required|email',
             'password' => 'required',
         ]);
 
@@ -87,11 +89,20 @@ class UserController extends Controller
         }
 
         $user = Auth::user();
-        $token = $user->createToken('api-token')->plainTextToken;
+
+        // Create token (get the string from plainTextToken)
+        $newToken = $user->createToken('api-token');
+
+        // Set expiry to 120 minutes on the DB row
+        $newToken->accessToken->forceFill([
+            'expires_at' => Carbon::now()->addMinutes(120),
+        ])->save();
 
         return response()->json([
-            'token' => $token,
-            'user' => $user,
+            'token'       => $newToken->plainTextToken,                 // <- correct
+            'user'        => $user,
+            'role'        => $user->role ?? null,
+            'expires_at'  => $newToken->accessToken->expires_at?->toIso8601String(),
         ]);
     }
 
