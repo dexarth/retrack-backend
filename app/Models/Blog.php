@@ -4,8 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 
 class Blog extends Model
 {
@@ -13,13 +12,45 @@ class Blog extends Model
 
     protected $fillable = [
         'title',
-        'slug',
         'excerpt',
         'content',
         'featured_image',
         'status',
         'author_id',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($blog) {
+            if (empty($blog->slug)) {
+                $blog->slug = static::generateUniqueSlug($blog->title);
+            }
+        });
+
+        static::updating(function ($blog) {
+            if ($blog->isDirty('title')) {
+                $blog->slug = static::generateUniqueSlug($blog->title);
+            }
+        });
+    }
+
+    public static function generateUniqueSlug($title)
+    {
+        $baseSlug = Str::slug($title);
+        $slug = $baseSlug;
+
+        $counter = 2;
+
+        while (static::withTrashed()->where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-{$counter}";
+            $counter++;
+        }
+
+        return $slug;
+    }
+
 
     public function author(): BelongsTo
     {
