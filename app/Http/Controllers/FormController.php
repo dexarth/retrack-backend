@@ -14,6 +14,7 @@ use App\Models\HealthMonitoring;
 use App\Models\LaporDiri;
 use App\Models\Mentee;
 use App\Models\User;
+use App\Models\Blog;
 
 class FormController extends Controller
 {
@@ -595,4 +596,34 @@ class FormController extends Controller
         }
     }
 
+    public function destroy($formName, $id)
+    {
+        try {
+            switch ($formName) {
+
+                case 'sudut-info':
+                    $info = Blog::findOrFail($id);
+
+                    // OPTIONAL: remove image file
+                    // if ($info->featured_image && \Storage::disk('public')->exists($info->featured_image)) {
+                    //     \Storage::disk('public')->delete($info->featured_image);
+                    // }
+
+                    $info->delete();
+                    break;
+
+                // add more cases here...
+                default:
+                    return response()->json(['message' => 'Form tidak disokong'], 400);
+            }
+
+            return response()->json(['message' => 'Rekod berjaya dipadam'], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal memadam rekod',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

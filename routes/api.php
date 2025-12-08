@@ -87,3 +87,6 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->post('/reports/laporan-mentee', [ReportController::class, 'laporanMenteePdf']);
 
 Route::middleware('auth:sanctum')->post('/reports/staff-monitorings', [ReportController::class, 'staffMonitorings']);
+
+Route::middleware('auth:sanctum')->delete('/form-submit/{formName}/{id}', [FormController::class, 'destroy']);
+
