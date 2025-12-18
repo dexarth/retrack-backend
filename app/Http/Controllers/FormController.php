@@ -248,7 +248,11 @@ class FormController extends Controller
      */
     public function updateForm(Request $request, string $formName, int $routeId)
     {
-        $this->validateFormLimitations($formName, $request, $routeId); 
+        $skipLimitForms = ['laporan-mentee'];
+
+        if (!in_array($formName, $skipLimitForms, true)) {
+            $this->validateFormLimitations($formName, $request, $routeId);
+        }
 
         $relationConfig = DB::table('table_relations')->where('form_name', $formName)->get();
 
