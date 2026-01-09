@@ -516,14 +516,15 @@ class FormController extends Controller
                 return response()->json(['message' => 'ID mentee tidak dijumpai atau tidak sah.'], 400);
             }
 
-            $exists = Laporan::where('mentee_id', $menteeId)
+            $dailyCount = Laporan::where('mentee_id', $menteeId)
                 ->whereDate('created_at', now()->toDateString())
-                ->when($routeId, fn($q) => $q->where('id','!=',$routeId))
-                //->whereNull('deleted_at')
-                ->exists();
+                ->when($routeId, fn ($q) => $q->where('id', '!=', $routeId))
+                ->count();
 
-            if ($exists) {
-                abort(response()->json(['message' => 'Maaf, anda hanya dibenarkan menghantar satu laporan sehari.'], 422));
+            if ($dailyCount >= 3) {
+                return response()->json([
+                    'message' => 'Maaf, laporan hanya boleh dikemaskini maksimum 3 kali sehari.'
+                ], 422);
             }
         }
 
